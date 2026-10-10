@@ -6,7 +6,7 @@ import { TypeList, TypeDetail, TypeEdit } from "./views/types.js"
 import { LocationList, LocationDetail, LocationEdit } from "./views/locations.js"
 import { Patch } from "./views/patch.js"
 import { Labels } from "./views/labels.js"
-import { Login, Account, Members, More, Settings } from "./views/admin.js"
+import { Login, Setup, Account, Members, More, Settings } from "./views/admin.js"
 import { LABEL_CSS } from "./labels.js"
 
 const labelStyle = document.createElement("style")
@@ -103,6 +103,13 @@ function Shell() {
 function App() {
   const user = useAuth()
   const [loadErr, setLoadErr] = useState(null)
+  const [setup, setSetup] = useState(null) // null = not checked yet
+
+  // a fresh instance without any account shows the setup page instead of the login
+  useEffect(() => {
+    if (user) return
+    pb.send("/api/setup", { method: "GET" }).then((r) => setSetup(!!r.needed)).catch(() => setSetup(false))
+  }, [user?.id])
 
   useEffect(() => {
     if (!user) return
@@ -112,7 +119,10 @@ function App() {
       .catch((e) => (e?.status === 401 ? pb.authStore.clear() : setLoadErr(errMsg(e))))
   }, [user?.id])
 
-  if (!user) return html`<${Login} /><${Toast} />`
+  if (!user) {
+    if (setup === null) return html`<div class="loading">Lade…</div>`
+    return html`${setup ? html`<${Setup} onDone=${() => setSetup(false)} />` : html`<${Login} />`}<${Toast} />`
+  }
   if (loadErr) {
     return html`<div class="login"><div class="login-card"><h1>Laden fehlgeschlagen</h1><p class="err">${loadErr}</p>
       <button class="btn primary" onClick=${() => location.reload()}>Neu laden</button></div></div>`

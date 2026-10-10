@@ -474,6 +474,7 @@ table.t { width: 100%; border-collapse: collapse; font-size: 14px; }
 .login-card { width: min(380px, 100%); display: grid; gap: 24px; padding: 28px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
 .login .brand { padding: 0; }
 .login .brand-logo { width: 40px; height: 40px; font-size: 13px; }
+.login-card.setup { width: min(520px, 100%); gap: 22px; }
 
 /* ---------- patch grid ---------- */
 .patch { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 20px; align-items: start; }

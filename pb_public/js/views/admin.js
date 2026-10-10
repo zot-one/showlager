@@ -33,6 +33,84 @@ export function Login() {
   </div>`
 }
 
+// first start: setup code from the server log + club settings + first admin account
+const initials = (name) => name.split(/[\s-]+/).filter((w) => /^[A-Za-zÄÖÜ]/.test(w)).map((w) => w[0].toUpperCase()).join("").slice(0, 4)
+const normCode = (s) => String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "")
+
+export function Setup({ onDone }) {
+  const [v, setV, bind] = useForm({ code: "", org_name: "", org_short: "", inv_prefix: "", name: "", email: "", password: "", password2: "" })
+  const [touched, setTouched] = useState({})
+  const [err, setErr] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const short = touched.org_short ? v.org_short : initials(v.org_name)
+  const prefix = (touched.inv_prefix ? normCode(v.inv_prefix) : normCode(short)).slice(0, 6) || "INV"
+
+  const submit = async (e) => {
+    e.preventDefault()
+    setErr(null)
+    if (v.password !== v.password2) { setErr("Die beiden Passwörter stimmen nicht überein."); return }
+    setBusy(true)
+    try {
+      await pb.send("/api/setup", {
+        method: "POST",
+        body: { code: v.code, org_name: v.org_name, org_short: short, inv_prefix: prefix, name: v.name, email: v.email, password: v.password },
+      })
+      await pb.collection("users").authWithPassword(v.email.trim(), v.password)
+      toast("Eingerichtet. Willkommen!")
+      onDone()
+    } catch (e2) {
+      setErr(e2?.response?.message || errMsg(e2))
+    } finally { setBusy(false) }
+  }
+
+  const own = (k) => ({
+    // until edited, Kürzel follows the club name and Präfix follows the Kürzel
+    value: k === "org_short" ? short : touched.inv_prefix ? v.inv_prefix : normCode(short).slice(0, 6),
+    onInput: (e) => {
+      const val = k === "inv_prefix" ? normCode(e.target.value).slice(0, 6) : e.target.value
+      setTouched((t) => ({ ...t, [k]: true }))
+      setV((x) => ({ ...x, [k]: val }))
+    },
+  })
+
+  return html`<div class="login">
+    <form class="login-card setup" onSubmit=${submit}>
+      <div class="brand">
+        <span class="brand-logo"><${Icon} name="spot" /></span>
+        <span class="brand-text"><b>Showtechnik-Inventar einrichten</b><small>Einmalig beim ersten Start</small></span>
+      </div>
+
+      <section class="section">
+        <${Field} label="Einrichtungscode" hint="Steht im Server-Log, z. B. mit docker compose logs pocketbase.">
+          <input id="setup-code" class="mono" required autocomplete="off" spellcheck="false" placeholder="XXXX-XXXX" ...${bind("code")} /><//>
+      </section>
+
+      <section class="section">
+        <h2>Verein</h2>
+        <${Field} label="Name des Vereins"><input id="setup-org" required maxlength="120" placeholder="z. B. Theaterverein Musterstadt" ...${bind("org_name")} /><//>
+        <div class="grid2" style="grid-template-columns:1fr 1fr">
+          <${Field} label="Kürzel" hint="Für das Logo"><input id="setup-short" maxlength="5" placeholder="TVM" ...${own("org_short")} /><//>
+          <${Field} label="Präfix Inventarnummer" hint=${`Erste Nummer: ${prefix}-0001`}><input id="setup-prefix" class="mono" maxlength="6" placeholder="INV" ...${own("inv_prefix")} /><//>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Dein Admin-Konto</h2>
+        <${Field} label="Name"><input id="setup-name" required autocomplete="name" ...${bind("name")} /><//>
+        <${Field} label="E-Mail"><input id="setup-email" type="email" required autocomplete="username" ...${bind("email")} /><//>
+        <div class="grid2" style="grid-template-columns:1fr 1fr">
+          <${Field} label="Passwort" hint="Mindestens 8 Zeichen"><input id="setup-pw" type="password" required minlength="8" autocomplete="new-password" ...${bind("password")} /><//>
+          <${Field} label="Wiederholen"><input id="setup-pw2" type="password" required minlength="8" autocomplete="new-password" ...${bind("password2")} /><//>
+        </div>
+      </section>
+
+      ${err ? html`<p class="err">${err}</p>` : null}
+      <button class="btn primary" disabled=${busy}>${busy ? "Wird eingerichtet…" : "Einrichten und anmelden"}</button>
+      <p class="muted" style="font-size:13px">Name, Kürzel und Präfix lassen sich später unter Einstellungen ändern. Weitere Mitglieder legst du danach unter Mitglieder an.</p>
+    </form>
+  </div>`
+}
+
 function getTheme() { try { return localStorage.getItem("inventar-theme") || "system" } catch { return "system" } }
 function setTheme(t) {
   try { t === "system" ? localStorage.removeItem("inventar-theme") : localStorage.setItem("inventar-theme", t) } catch {}

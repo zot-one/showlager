@@ -23,7 +23,7 @@ Alle Bibliotheken und Schriften liegen im Repo, es werden keine externen Dienste
 
 ```
 pb_migrations/   Schema: Collections, Zugriffsregeln, Backup-Zeitplan
-pb_hooks/        Serverlogik: Inventarnummer, DMX-Zeitstempel, Änderungsverlauf
+pb_hooks/        Serverlogik: Einrichtung, Inventarnummer, DMX-Zeitstempel, Änderungsverlauf
 pb_public/       Frontend: index.html, app.css, js/, vendor/ (Bibliotheken), fonts/ (IBM Plex)
 licenses/        Lizenztexte der mitgelieferten Fremdkomponenten
 docs/            Screenshots für diese README
@@ -38,21 +38,35 @@ Passende Datei für das eigene System von den [PocketBase-Releases v0.40.5](http
 curl -sL -o /tmp/pb.zip https://github.com/pocketbase/pocketbase/releases/download/v0.40.5/pocketbase_0.40.5_darwin_arm64.zip
 unzip -o /tmp/pb.zip pocketbase -d bin
 
-./bin/pocketbase superuser upsert admin@example.com '<passwort>' --dir=pb_data
 ./bin/pocketbase serve --dir=pb_data --hooksDir=pb_hooks --migrationsDir=pb_migrations --publicDir=pb_public
 ```
 
-App: http://127.0.0.1:8090 · Admin-Dashboard: http://127.0.0.1:8090/_/
-
 Die Migration legt beim ersten Start alle Collections an. Daten liegen in `pb_data/` (nicht im Repo).
+
+## Einrichtung beim ersten Start
+
+Solange es noch kein Konto gibt, schreibt der Server einen **Einrichtungscode** ins Log:
+
+```
+  Showtechnik-Inventar ist noch nicht eingerichtet.
+  Einrichtungscode: K7QM-4XPA
+```
+
+Dann die App öffnen (lokal http://127.0.0.1:8090). Statt der Anmeldung erscheint die Einrichtungsseite: Code eingeben,
+Vereinsname, Kürzel und Präfix der Inventarnummern festlegen, eigenes Admin-Konto anlegen, fertig.
+
+- Der Code gilt nur, solange noch kein Konto existiert, und nur für den laufenden Server. Nach einem Neustart gibt es einen neuen.
+- Nach 10 falschen Eingaben wird der Code ersetzt, der neue steht wieder im Log.
+- Den PocketBase-Hinweis „create your first superuser“ im Log kann man ignorieren (siehe Konten).
 
 ## Konten
 
-- **Superuser** (Dashboard `/_/`): für Einrichtung, Backups und Notfälle.
-- **App-Konten** liegen in der Collection `users` mit `role` = `member` oder `admin`.
-  Das erste Admin-Konto im Dashboard anlegen (users → New record, role = `admin`), danach legen Admins
-  weitere Mitglieder direkt in der App unter **Mitglieder** an und können dort Passwörter setzen.
+- Das erste **Admin-Konto** entsteht bei der Einrichtung. Weitere Mitglieder legen Admins in der App unter
+  **Mitglieder** an und setzen dort auch Passwörter.
 - Mitglieder dürfen alles anlegen und bearbeiten, löschen dürfen nur Admins.
+- Ein PocketBase-**Superuser** (Dashboard `/_/`) wird für den normalen Betrieb nicht gebraucht, nur zum Wiederherstellen
+  von Backups oder für Eingriffe direkt in der Datenbank. Bei Bedarf anlegen mit
+  `./bin/pocketbase superuser upsert admin@example.com '<passwort>' --dir=pb_data`.
 
 ## Betrieb mit Docker
 
@@ -63,8 +77,11 @@ Reverse Proxy mit HTTPS (z. B. Traefik, Caddy oder nginx), der auf diesen Port w
 ```sh
 rsync -av --exclude bin --exclude pb_data ./ <server>:<pfad>/
 ssh <server> 'cd <pfad> && docker compose up -d --build'
-docker compose exec pocketbase /pb/pocketbase superuser upsert admin@example.com '<passwort>' --dir=/pb/pb_data
+ssh <server> 'cd <pfad> && docker compose logs pocketbase | grep Einrichtungscode'
 ```
+
+Danach die App im Browser öffnen und einrichten (siehe oben). Superuser bei Bedarf:
+`docker compose exec pocketbase /pb/pocketbase superuser upsert admin@example.com '<passwort>' --dir=/pb/pb_data`
 
 - Änderungen in `pb_public/` sind sofort live, Hooks werden automatisch neu geladen.
 - Neue Migrationen laufen beim Neustart des Containers.
