@@ -25,9 +25,9 @@ function newCode(app, reason) {
   console.log([
     "",
     line,
-    "  Showlager ist noch nicht eingerichtet." + (reason ? " (" + reason + ")" : ""),
-    "  Einrichtungscode: " + code,
-    "  Öffne die App im Browser und gib den Code dort ein.",
+    "  Showlager is not set up yet / ist noch nicht eingerichtet." + (reason ? " (" + reason + ")" : ""),
+    "  Setup code / Einrichtungscode: " + code,
+    "  Open the app in a browser and enter the code. / Öffne die App im Browser und gib den Code ein.",
     line,
     "",
   ].join("\n"))
@@ -43,7 +43,7 @@ function ensureCode(app) {
 function registerFailure(app) {
   const fails = (app.store().get(FAILS) || 0) + 1
   app.store().set(FAILS, fails)
-  if (fails >= MAX_FAILS) newCode(app, "neuer Code nach " + MAX_FAILS + " Fehlversuchen")
+  if (fails >= MAX_FAILS) newCode(app, "new code after " + MAX_FAILS + " wrong attempts")
 }
 
 function clear(app) {

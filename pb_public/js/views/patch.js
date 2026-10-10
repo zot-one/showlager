@@ -1,6 +1,7 @@
 import { html, useEffect, useMemo, useRef, useState } from "../../vendor/preact-htm.mjs"
 import { state, emit, useStore, save, toast, errMsg, typeOf, modeOf, modesOf, isDmx, tapeOf, pad3 } from "../store.js"
 import { Icon, Plate, Swatch, Head } from "../ui.js"
+import { t, tn } from "../i18n.js"
 
 const fpOf = (item) => modeOf(item)?.footprint || 1
 
@@ -98,32 +99,32 @@ function Pop({ pop, universe, onClose }) {
   const move = (e) => {
     e.preventDefault()
     const a = Number(addr)
-    if (!(a >= 1 && a <= 512)) { toast("Adresse muss zwischen 1 und 512 liegen.", true); return }
+    if (!(a >= 1 && a <= 512)) { toast(t("Adresse muss zwischen 1 und 512 liegen."), true); return }
     patchItems(ids, { dmx_universe: universe, dmx_address: a }, `Auf ${universe}.${pad3(a)} gesetzt`)
     onClose()
   }
 
-  return html`<div class="pop" ref=${ref} style=${`left:${left}px;top:${top}px`} role="dialog" aria-label="Gerät im Patch">
+  return html`<div class="pop" ref=${ref} style=${`left:${left}px;top:${top}px`} role="dialog" aria-label=${t("Gerät im Patch")}>
     ${items.map((it) => {
       const modes = modesOf(typeOf(it))
       return html`<div class="member">
-        <div class="spread"><${Plate} no=${it.inv_no} /><a class="btn sm ghost" href=${`#/i/${it.id}`}>Öffnen</a></div>
+        <div class="spread"><${Plate} no=${it.inv_no} /><a class="btn sm ghost" href=${`#/i/${it.id}`}>${t("Öffnen")}</a></div>
         <div><b>${it.name}</b>${typeOf(it) ? html`<div class="muted" style="font-size:13px">${typeOf(it).manufacturer} ${typeOf(it).model}</div>` : null}</div>
-        ${modes.length ? html`<label class="field"><span>Mode</span>
-          <select value=${it.dmx_mode} onChange=${(e) => patchItems([it.id], { dmx_mode: e.target.value }, "Mode gespeichert")}>
-            ${!modes.some((m) => m.name === it.dmx_mode) ? html`<option value=${it.dmx_mode}>${it.dmx_mode || "— wählen —"}</option>` : null}
-            ${modes.map((m) => html`<option value=${m.name}>${m.name} (${m.footprint} Kan.)</option>`)}
-          </select></label>` : html`<p class="muted" style="font-size:13px">Kein Gerätetyp mit Modes, belegt 1 Kanal.</p>`}
-        ${items.length > 1 ? html`<button class="btn sm" onClick=${() => { patchItems([it.id], { dmx_address: 0, dmx_universe: 0 }, `${it.inv_no} entpatcht`); onClose() }}>Nur dieses entpatchen</button>` : null}
+        ${modes.length ? html`<label class="field"><span>${t("Mode")}</span>
+          <select value=${it.dmx_mode} onChange=${(e) => patchItems([it.id], { dmx_mode: e.target.value }, t("Mode gespeichert"))}>
+            ${!modes.some((m) => m.name === it.dmx_mode) ? html`<option value=${it.dmx_mode}>${it.dmx_mode || t("— wählen —")}</option>` : null}
+            ${modes.map((m) => html`<option value=${m.name}>${m.name} (${t("{n} Kan.", { n: m.footprint })})</option>`)}
+          </select></label>` : html`<p class="muted" style="font-size:13px">${t("Kein Gerätetyp mit Modes, belegt 1 Kanal.")}</p>`}
+        ${items.length > 1 ? html`<button class="btn sm" onClick=${() => { patchItems([it.id], { dmx_address: 0, dmx_universe: 0 }, t("{no} entpatcht", { no: it.inv_no })); onClose() }}>${t("Nur dieses entpatchen")}</button>` : null}
       </div>`
     })}
     <form class="row" onSubmit=${move} style="border-top:1px solid var(--line);padding-top:12px">
-      <label class="field" style="flex:1"><span>Startadresse in Universe ${universe}</span>
+      <label class="field" style="flex:1"><span>${t("Startadresse in Universe {u}", { u: universe })}</span>
         <input type="number" min="1" max="512" inputmode="numeric" value=${addr} onInput=${(e) => setAddr(e.target.value)} /></label>
-      <button class="btn primary" style="align-self:end">Setzen</button>
+      <button class="btn primary" style="align-self:end">${t("Setzen")}</button>
     </form>
-    <button class="btn danger" onClick=${() => { patchItems(ids, { dmx_address: 0, dmx_universe: 0 }, "Entpatcht"); onClose() }}>
-      ${items.length > 1 ? `Alle ${items.length} entpatchen` : "Entpatchen"}</button>
+    <button class="btn danger" onClick=${() => { patchItems(ids, { dmx_address: 0, dmx_universe: 0 }, t("Entpatcht")); onClose() }}>
+      ${items.length > 1 ? t("Alle {n} entpatchen", { n: items.length }) : t("Entpatchen")}</button>
   </div>`
 }
 
@@ -160,7 +161,8 @@ export function Patch({ universe: uParam, focus }) {
   const qq = q.toLowerCase()
   const poolShown = qq ? pool.filter((i) => `${i.inv_no} ${i.name} ${typeOf(i)?.model || ""}`.toLowerCase().includes(qq)) : pool
   const usedCh = occ.slice(1, 513).filter((n) => n > 0).length
-  const conflicts = groups.filter((g) => g.conflict).length
+  // overlapping pairs plus fixtures running past channel 512, same as the list next to the grid
+  const conflicts = pairs.length + groups.filter((g) => g.start + g.fp - 1 > 512).length
 
   useEffect(() => {
     if (focus) document.querySelector(`[data-ids*="${focus}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" })
@@ -214,7 +216,7 @@ export function Patch({ universe: uParam, focus }) {
       setDrag(null)
       if (cancelled) return
       if (!cur) { d.onClick?.(ev); return }
-      if (cur.overPool) patchItems(d.ids, { dmx_address: 0, dmx_universe: 0 }, "Entpatcht")
+      if (cur.overPool) patchItems(d.ids, { dmx_address: 0, dmx_universe: 0 }, t("Entpatcht"))
       else if (cur.start && cur.valid) place(d.ids, cur.start)
     }
     const upH = (ev) => end(ev, false)
@@ -226,7 +228,7 @@ export function Patch({ universe: uParam, focus }) {
 
   const place = (ids, start) => {
     const items = ids.map((id) => state.items.find((i) => i.id === id))
-    patchItems(ids, { dmx_universe: u, dmx_address: start }, `${items.length > 1 ? `${items.length} Geräte` : items[0].inv_no} → ${u}.${pad3(start)}`)
+    patchItems(ids, { dmx_universe: u, dmx_address: start }, `${items.length > 1 ? t("{n} Geräte", { n: items.length }) : items[0].inv_no} → ${u}.${pad3(start)}`)
     setArmed(null)
     setSelected(ids[0])
     // pick a mode right away when the type has several and none is set
@@ -251,32 +253,32 @@ export function Patch({ universe: uParam, focus }) {
   for (let ch = 1; ch <= 512; ch++) {
     const cls = `pcell${ch % 8 === 1 ? " dec" : ""}${hl && ch >= hl.from && ch <= hl.to ? ` hl${hl.bad ? " bad" : ""}` : ""}`
     cells.push(html`<div class=${cls} style=${`grid-row:${Math.floor((ch - 1) / cols) + 1};grid-column:${((ch - 1) % cols) + 1}`}
-      onClick=${armedItem ? () => { const f = fits(ch, fpOf(armedItem), [armed]); if (f.valid) place([armed], ch); else toast("Passt dort nicht mehr ins Universe.", true) } : undefined}><span>${ch}</span></div>`)
+      onClick=${armedItem ? () => { const f = fits(ch, fpOf(armedItem), [armed]); if (f.valid) place([armed], ch); else toast(t("Passt dort nicht mehr ins Universe."), true) } : undefined}><span>${ch}</span></div>`)
   }
 
   const legendTypes = [...new Map(here.map((i) => [i.type || "-", typeOf(i)])).entries()]
 
   return html`<div class="wrap" style="max-width:none">
     <${Head}
-      title=${html`<h1>Patch</h1>`}
-      sub="Zuletzt bekannte DMX-Adressen. Geräte ziehen zum Umpatchen. Jede Änderung wird sofort gespeichert und im Verlauf des Geräts protokolliert." />
+      title=${html`<h1>${t("Patch")}</h1>`}
+      sub=${t("Zuletzt bekannte DMX-Adressen. Geräte ziehen zum Umpatchen. Jede Änderung wird sofort gespeichert und im Verlauf des Geräts protokolliert.")} />
 
     <div class="spread">
-      <div class="universes" role="group" aria-label="Universe">
+      <div class="universes" role="group" aria-label=${t("Universe")}>
         ${universes.map((n) => {
           const cnt = s.items.filter((i) => i.dmx_address > 0 && (i.dmx_universe || 1) === n).length
-          return html`<button aria-pressed=${n === u} onClick=${() => { setU(n); setPop(null) }}>Universe ${n} <span class="mono">${cnt}</span></button>`
+          return html`<button aria-pressed=${n === u} onClick=${() => { setU(n); setPop(null) }}>${t("Universe {n}", { n })} <span class="mono">${cnt}</span></button>`
         })}
-        <button onClick=${() => { const n = Math.max(...universes) + 1; setExtra([...extra, n]); setU(n) }} aria-label="Universe hinzufügen"><${Icon} name="plus" /></button>
+        <button onClick=${() => { const n = Math.max(...universes) + 1; setExtra([...extra, n]); setU(n) }} aria-label=${t("Universe hinzufügen")}><${Icon} name="plus" /></button>
       </div>
       <div class="row">
-        <span class="chip plain mono">${usedCh} / 512 belegt</span>
-        ${conflicts ? html`<span class="chip defekt">${conflicts} Überschneidung${conflicts > 1 ? "en" : ""}</span>` : html`<span class="chip ok">Keine Überschneidungen</span>`}
+        <span class="chip plain mono">${t("{n} / 512 belegt", { n: usedCh })}</span>
+        ${conflicts ? html`<span class="chip defekt">${tn(conflicts, "{n} Überschneidung", "{n} Überschneidungen")}</span>` : html`<span class="chip ok">${t("Keine Überschneidungen")}</span>`}
       </div>
     </div>
 
-    ${armedItem ? html`<p class="hint">Tippe auf den Startkanal für <b>${armedItem.inv_no} ${armedItem.name}</b> (${fpOf(armedItem)} Kanäle).
-      <button class="btn sm ghost" onClick=${() => setArmed(null)}>Abbrechen</button></p>` : null}
+    ${armedItem ? html`<p class="hint">${t("Tippe auf den Startkanal für")} <b>${armedItem.inv_no} ${armedItem.name}</b> (${tn(fpOf(armedItem), "{n} Kanal", "{n} Kanäle")}).
+      <button class="btn sm ghost" onClick=${() => setArmed(null)}>${t("Abbrechen")}</button></p>` : null}
 
     <div class="patch">
       <div class="pgrid-wrap">
@@ -294,7 +296,7 @@ export function Patch({ universe: uParam, focus }) {
               style=${`grid-row:${seg.row};grid-column:${seg.col} / span ${seg.span};--tape:${tapeOf(typeOf(first))}`}
               data-ids=${ids.join(",")}
               tabindex=${seg.first ? 0 : -1} role="button"
-              title=${`${names} · ${u}.${pad3(g.start)}–${pad3(g.end)}${mode ? ` · ${mode.name}` : " · Mode unbekannt"}`}
+              title=${`${names} · ${u}.${pad3(g.start)}–${pad3(g.end)}${mode ? ` · ${mode.name}` : ` · ${t("Mode unbekannt")}`}`}
               onKeyDown=${(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); const r = e.currentTarget.getBoundingClientRect(); setPop({ ids, x: r.left + r.width / 2, y: r.bottom }) } }}
               onPointerDown=${(e) => {
                 const ch = chAt(e.clientX, e.clientY) || g.start
@@ -302,7 +304,7 @@ export function Patch({ universe: uParam, focus }) {
                   onClick: (ev) => { setSelected(first.id); setPop({ ids, x: ev.clientX, y: ev.clientY }) } })
               }}>
               ${seg.first ? html`
-                <span class="t1">${g.conflict ? html`<span class="warn" title="Überschneidung">!</span>` : null}${pad3(g.start)}${!mode ? html`<span title="Mode unbekannt">?</span>` : null}${g.items.length > 1 ? html`<span class="grp">×${g.items.length}</span>` : null}</span>
+                <span class="t1">${g.conflict ? html`<span class="warn" title=${t("Überschneidung")}>!</span>` : null}${pad3(g.start)}${!mode ? html`<span title=${t("Mode unbekannt")}>?</span>` : null}${g.items.length > 1 ? html`<span class="grp">×${g.items.length}</span>` : null}</span>
                 ${seg.span > 1 ? html`<span class="t2">${g.items.length > 1 ? g.items.map((i) => i.name).join(" + ") : first.name}</span>` : null}` : null}
             </div>`)
           })}
@@ -313,7 +315,7 @@ export function Patch({ universe: uParam, focus }) {
 
       <aside class="pside">
         ${pairs.length ? html`<section class="stack">
-          <h2 style="color:var(--bad)">Überschneidungen · ${pairs.length}</h2>
+          <h2 style="color:var(--bad)">${t("Überschneidungen")} · ${pairs.length}</h2>
           <div class="clashes">
             ${pairs.map(({ a, b, from, to }) => html`<button type="button" onClick=${(e) => { const ids = [...a.items, ...b.items].map((i) => i.id); setSelected(a.items[0].id); setPop({ ids, x: e.clientX, y: e.clientY }) }}>
               <span class="mono">${pad3(from)}${to > from ? `–${pad3(to)}` : ""}</span>
@@ -322,12 +324,12 @@ export function Patch({ universe: uParam, focus }) {
           </div>
         </section>` : null}
         <section class="stack">
-          <h2>Nicht gepatcht · ${pool.length}</h2>
-          ${pool.length > 8 ? html`<input class="input" type="search" placeholder="Filtern…" value=${q} onInput=${(e) => setQ(e.target.value)} aria-label="Ungepatchte Geräte filtern" />` : null}
+          <h2>${t("Nicht gepatcht")} · ${pool.length}</h2>
+          ${pool.length > 8 ? html`<input class="input" type="search" placeholder=${t("Filtern…")} value=${q} onInput=${(e) => setQ(e.target.value)} aria-label=${t("Ungepatchte Geräte filtern")} />` : null}
           <div class=${`pool${drag?.overPool ? " over" : ""}`} ref=${poolRef}>
-            ${drag?.from === "grid" ? html`<p class="muted" style="font-size:13px">Hier loslassen, um zu entpatchen</p>` : null}
+            ${drag?.from === "grid" ? html`<p class="muted" style="font-size:13px">${t("Hier loslassen, um zu entpatchen")}</p>` : null}
             ${poolShown.map((i) => html`<div key=${i.id} class=${`pchip${armed === i.id ? " armed" : ""}`} style=${`--tape:${tapeOf(typeOf(i))}`}
-              role="button" tabindex="0" title="Ziehen oder antippen und dann Startkanal wählen"
+              role="button" tabindex="0" title=${t("Ziehen oder antippen und dann Startkanal wählen")}
               onKeyDown=${(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setArmed(armed === i.id ? null : i.id))}
               onPointerDown=${(e) => startDrag(e, { ids: [i.id], fp: fpOf(i), grab: 0, from: "pool", label: `${i.inv_no} ${i.name}`,
                 onClick: () => setArmed(armed === i.id ? null : i.id) })}>
@@ -335,13 +337,13 @@ export function Patch({ universe: uParam, focus }) {
               <span class="n"><span class="mono" style="font-size:12px">${i.inv_no}</span> ${i.name}</span>
               <span class="mono">${modeOf(i) ? `${fpOf(i)} ch` : "? ch"}</span>
             </div>`)}
-            ${!pool.length && drag?.from !== "grid" ? html`<p class="muted" style="font-size:13px">Alle DMX-Geräte haben eine Adresse. Geräte ohne Adresse erscheinen hier, sobald ihr Typ DMX-Modes hat.</p>` : null}
+            ${!pool.length && drag?.from !== "grid" ? html`<p class="muted" style="font-size:13px">${t("Alle DMX-Geräte haben eine Adresse. Geräte ohne Adresse erscheinen hier, sobald ihr Typ DMX-Modes hat.")}</p>` : null}
           </div>
         </section>
         ${legendTypes.length ? html`<section class="stack">
-          <h2>Typen in Universe ${u}</h2>
-          <div class="legend">${legendTypes.map(([id, t]) => html`<div><${Swatch} type=${t} /><span class="mono faint">${here.filter((i) => (i.type || "-") === id).length}×</span>
-            <span>${t ? `${t.manufacturer} ${t.model}` : "Ohne Typ"}</span></div>`)}</div>
+          <h2>${t("Typen in Universe {u}", { u })}</h2>
+          <div class="legend">${legendTypes.map(([id, ty]) => html`<div><${Swatch} type=${ty} /><span class="mono faint">${here.filter((i) => (i.type || "-") === id).length}×</span>
+            <span>${ty ? `${ty.manufacturer} ${ty.model}` : t("Ohne Typ")}</span></div>`)}</div>
         </section>` : null}
       </aside>
     </div>

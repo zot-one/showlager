@@ -11,6 +11,8 @@ die Keller und Garagen der Mitglieder.
 - **Patch-Raster** wie in Daslight: 512 Kanäle pro Universe, Drag & Drop, Überschneidungen werden markiert, zuletzt bekannte Adresse mit Datum und Person
 - **Etiketten** mit QR-Code, frei gestaltbar (WYSIWYG), gekachelt auf A4-Sticker-Bögen zum Ausschneiden
 - **Änderungsverlauf** pro Teil, persönliche Konten, Löschen nur für Admins
+- **API für KI-Agenten und Skripte**: MCP-Server und REST-API mit API-Schlüsseln, inklusive GDTF- und Foto-Upload
+- **Deutsch und Englisch**, Sprache folgt dem Browser und lässt sich im Konto umstellen
 
 | Patch-Raster | Etikett gestalten | Etiketten drucken |
 |---|---|---|
@@ -23,10 +25,10 @@ Alle Bibliotheken und Schriften liegen im Repo, es werden keine externen Dienste
 
 ```
 pb_migrations/   Schema: Collections, Zugriffsregeln, Backup-Zeitplan
-pb_hooks/        Serverlogik: Einrichtung, Inventarnummer, DMX-Zeitstempel, Änderungsverlauf
+pb_hooks/        Serverlogik: Einrichtung, Inventarnummer, DMX-Zeitstempel, Verlauf, GDTF-Parser, API-Schlüssel, MCP
 pb_public/       Frontend: index.html, app.css, js/, vendor/ (Bibliotheken), fonts/ (IBM Plex)
 licenses/        Lizenztexte der mitgelieferten Fremdkomponenten
-docs/            Screenshots für diese README
+docs/            API-Dokumentation (API.md) und Screenshots
 ```
 
 ## Lokal starten
@@ -103,6 +105,14 @@ Das Etikett wird in der App unter **Etiketten → Etikett gestalten** visuell be
 (`settings.label_template`, Logo in `settings.label_logo`). Ohne gespeicherte Vorlage gilt der Standard aus
 `pb_public/js/labels.js`. Designer, Vorschau und Druck nutzen denselben Renderer.
 Im Druckdialog Skalierung 100 % und Ränder „keine“ wählen.
+
+## API und KI-Agenten
+
+Admins erstellen in der App unter **API-Schlüssel** Schlüssel mit Lese- oder Schreibzugriff. Damit arbeiten
+KI-Agenten über MCP (`https://<host>/mcp`, z. B. `claude mcp add --transport http showlager https://<host>/mcp --header "Authorization: Bearer sl_…"`)
+und Skripte über die REST-API. Schlüssel können nichts löschen und keine Konten oder Einstellungen ändern,
+jede Änderung steht im Verlauf mit dem Namen des Schlüssels. GDTF-Dateien werden auch per API ausgelesen.
+Details, alle Tools und Beispiele: [`docs/API.md`](docs/API.md) (Englisch).
 
 ## Einstellungen
 

@@ -704,6 +704,8 @@ table.t { width: 100%; border-collapse: collapse; font-size: 14px; }
 .ld-layers button:hover { background: var(--hover); }
 .ld-layers button[aria-current="true"] { background: color-mix(in srgb, var(--select) 12%, var(--surface)); }
 .ld-layers svg { width: 15px; height: 15px; flex: none; color: var(--muted); }
+.snippet { margin: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface-2); font: 12px/1.5 var(--font-mono); white-space: pre-wrap; word-break: break-all; }
+.newkey { border-color: color-mix(in srgb, var(--fix) 50%, var(--line)); }
 .kbd { font: 11px var(--font-mono); padding: 1px 5px; border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 4px; color: var(--muted); }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,5 +1,6 @@
 import { html, render, useEffect, useState } from "../vendor/preact-htm.mjs"
 import { pb, useStore, useAuth, useRoute, loadAll, isAdmin, me, errMsg, org } from "./store.js"
+import { t } from "./i18n.js"
 import { Icon, Toast, ConfirmHost } from "./ui.js"
 import { ItemList, ItemDetail, ItemEdit } from "./views/items.js"
 import { TypeList, TypeDetail, TypeEdit } from "./views/types.js"
@@ -7,6 +8,7 @@ import { LocationList, LocationDetail, LocationEdit } from "./views/locations.js
 import { Patch } from "./views/patch.js"
 import { Labels } from "./views/labels.js"
 import { Login, Setup, Account, Members, More, Settings } from "./views/admin.js"
+import { ApiKeys } from "./views/apikeys.js"
 import { LABEL_CSS } from "./labels.js"
 
 const labelStyle = document.createElement("style")
@@ -31,27 +33,29 @@ function resolve({ parts, query }) {
     case "etiketten": return [Labels, "labels", { ids: (query.get("ids") || "").split(",").filter(Boolean), tab: b === "vorlage" ? "design" : "print" }]
     case "mitglieder": return [isAdmin() ? Members : NotFound, "more", {}]
     case "einstellungen": return [isAdmin() ? Settings : NotFound, "more", {}]
+    case "api": return [isAdmin() ? ApiKeys : NotFound, "more", {}]
     case "konto": return [Account, "more", {}]
     case "mehr": return [More, "more", {}]
     default: return [NotFound, "", {}]
   }
 }
 
-const NotFound = () => html`<div class="wrap"><h1>Nicht gefunden</h1><p><a href="#/">Zurück zum Inventar</a></p></div>`
+const NotFound = () => html`<div class="wrap"><h1>${t("Nicht gefunden")}</h1><p><a href="#/">${t("Zurück zum Inventar")}</a></p></div>`
 
+// [section, href, icon, label, short label for the phone tab bar]
 const NAV = [
-  ["items", "#/", "box", "Inventar"],
-  ["locations", "#/orte", "pin", "Lagerorte"],
-  ["patch", "#/patch", "grid", "Patch"],
-  ["types", "#/typen", "spot", "Gerätetypen"],
-  ["labels", "#/etiketten", "tag", "Etiketten"],
+  ["items", "#/", "box", "Inventar", "Inventar"],
+  ["locations", "#/orte", "pin", "Lagerorte", "Orte"],
+  ["patch", "#/patch", "grid", "Patch", "Patch"],
+  ["types", "#/typen", "spot", "Gerätetypen", "Typen"],
+  ["labels", "#/etiketten", "tag", "Etiketten", "Etiketten"],
 ]
 
 export function Brand() {
   const o = org()
   return html`<a class="brand" href="#/">
     <span class="brand-logo">${o.short || html`<${Icon} name="spot" />`}</span>
-    <span class="brand-text"><b>Showlager</b><small>${o.name || "Inventar für Showtechnik"}</small></span>
+    <span class="brand-text"><b>Showlager</b><small>${o.name || t("Inventar für Showtechnik")}</small></span>
   </a>`
 }
 
@@ -64,22 +68,25 @@ function Shell() {
   useEffect(() => { document.title = o.short ? `Showlager · ${o.short}` : "Showlager" }, [o.short])
   const counts = { items: s.items.length, locations: s.locations.length, types: s.types.length }
   const cur = (k) => (k === section ? "page" : undefined)
+  const here = (p) => (route.parts[0] === p ? "page" : undefined)
 
   return html`
     <div class="shell">
       <aside class="rail">
         <${Brand} />
-        <nav class="nav" aria-label="Hauptnavigation">
+        <nav class="nav" aria-label=${t("Hauptnavigation")}>
           ${NAV.map(([k, href, icon, label]) => html`
-            <a href=${href} aria-current=${cur(k)}><${Icon} name=${icon} />${label}
+            <a href=${href} aria-current=${cur(k)}><${Icon} name=${icon} />${t(label)}
               ${counts[k] != null ? html`<span class="count">${counts[k]}</span>` : null}</a>`)}
         </nav>
         <div class="rail-foot">
-          <div class="who"><b>${user?.name || user?.email}</b>${user?.role === "admin" ? "Admin" : "Mitglied"}</div>
+          <div class="who"><b>${user?.name || user?.email}</b>${user?.role === "admin" ? t("Admin") : t("Mitglied")}</div>
           <nav class="nav">
-            ${isAdmin() ? html`<a href="#/mitglieder" aria-current=${route.parts[0] === "mitglieder" ? "page" : undefined}><${Icon} name="users" />Mitglieder</a>
-              <a href="#/einstellungen" aria-current=${route.parts[0] === "einstellungen" ? "page" : undefined}><${Icon} name="sliders" />Einstellungen</a>` : null}
-            <a href="#/konto" aria-current=${route.parts[0] === "konto" ? "page" : undefined}><${Icon} name="user" />Konto</a>
+            ${isAdmin() ? html`
+              <a href="#/mitglieder" aria-current=${here("mitglieder")}><${Icon} name="users" />${t("Mitglieder")}</a>
+              <a href="#/api" aria-current=${here("api")}><${Icon} name="key" />${t("API-Schlüssel")}</a>
+              <a href="#/einstellungen" aria-current=${here("einstellungen")}><${Icon} name="sliders" />${t("Einstellungen")}</a>` : null}
+            <a href="#/konto" aria-current=${here("konto")}><${Icon} name="user" />${t("Konto")}</a>
           </nav>
         </div>
       </aside>
@@ -89,13 +96,13 @@ function Shell() {
       </header>
 
       <main class="main" id="main">
-        ${s.ready ? html`<${View} key=${route.parts.join("/")} ...${props} />` : html`<div class="loading">Lade Inventar…</div>`}
+        ${s.ready ? html`<${View} key=${route.parts.join("/")} ...${props} />` : html`<div class="loading">${t("Lade Inventar…")}</div>`}
       </main>
 
-      <nav class="tabbar" aria-label="Navigation">
-        ${NAV.slice(0, 4).map(([k, href, icon, label]) => html`
-          <a href=${href} aria-current=${cur(k)}><${Icon} name=${icon} />${label === "Gerätetypen" ? "Typen" : label === "Lagerorte" ? "Orte" : label}</a>`)}
-        <a href="#/mehr" aria-current=${cur("more") || cur("labels")}><${Icon} name="more" />Mehr</a>
+      <nav class="tabbar" aria-label=${t("Navigation")}>
+        ${NAV.slice(0, 4).map(([k, href, icon, , short]) => html`
+          <a href=${href} aria-current=${cur(k)}><${Icon} name=${icon} />${t(short)}</a>`)}
+        <a href="#/mehr" aria-current=${cur("more") || cur("labels")}><${Icon} name="more" />${t("Mehr")}</a>
       </nav>
     </div>`
 }
@@ -120,12 +127,12 @@ function App() {
   }, [user?.id])
 
   if (!user) {
-    if (setup === null) return html`<div class="loading">Lade…</div>`
+    if (setup === null) return html`<div class="loading">${t("Lade…")}</div>`
     return html`${setup ? html`<${Setup} onDone=${() => setSetup(false)} />` : html`<${Login} />`}<${Toast} />`
   }
   if (loadErr) {
-    return html`<div class="login"><div class="login-card"><h1>Laden fehlgeschlagen</h1><p class="err">${loadErr}</p>
-      <button class="btn primary" onClick=${() => location.reload()}>Neu laden</button></div></div>`
+    return html`<div class="login"><div class="login-card"><h1>${t("Laden fehlgeschlagen")}</h1><p class="err">${loadErr}</p>
+      <button class="btn primary" onClick=${() => location.reload()}>${t("Neu laden")}</button></div></div>`
   }
   return html`<${Shell} /><${Toast} /><${ConfirmHost} />`
 }

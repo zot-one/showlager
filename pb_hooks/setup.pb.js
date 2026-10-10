@@ -16,23 +16,23 @@ routerAdd("GET", "/api/setup", (e) => {
 
 routerAdd("POST", "/api/setup", (e) => {
   const lib = require(`${__hooks}/setup_lib.js`)
-  if (!lib.needsSetup(e.app)) throw new ForbiddenError("Diese Instanz ist bereits eingerichtet.")
+  if (!lib.needsSetup(e.app)) throw new ForbiddenError("This instance is already set up.")
 
   const body = e.requestInfo().body
   if (!lib.norm(body.code) || lib.norm(body.code) !== lib.norm(lib.ensureCode(e.app))) {
     lib.registerFailure(e.app)
-    throw new BadRequestError("Der Einrichtungscode stimmt nicht. Er steht im Server-Log.")
+    throw new BadRequestError("The setup code is wrong. You find it in the server log.")
   }
 
   const name = String(body.name || "").trim()
   const email = String(body.email || "").trim()
   const password = String(body.password || "")
-  if (!name) throw new BadRequestError("Bitte deinen Namen eingeben.")
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new BadRequestError("Bitte eine gültige E-Mail-Adresse eingeben.")
-  if (password.length < 8) throw new BadRequestError("Das Passwort braucht mindestens 8 Zeichen.")
+  if (!name) throw new BadRequestError("Please enter your name.")
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new BadRequestError("Please enter a valid e-mail address.")
+  if (password.length < 8) throw new BadRequestError("The password needs at least 8 characters.")
 
   e.app.runInTransaction((tx) => {
-    if (tx.countRecords("users") > 0) throw new ForbiddenError("Diese Instanz ist bereits eingerichtet.")
+    if (tx.countRecords("users") > 0) throw new ForbiddenError("This instance is already set up.")
 
     const user = new Record(tx.findCollectionByNameOrId("users"))
     user.setEmail(email)

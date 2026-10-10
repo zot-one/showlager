@@ -1,5 +1,6 @@
 import PocketBase from "../vendor/pocketbase.mjs"
 import { useEffect, useReducer, useState } from "../vendor/preact-htm.mjs"
+import { t, locale, serverMsg } from "./i18n.js"
 
 export const pb = new PocketBase("/")
 pb.autoCancellation(false)
@@ -95,7 +96,7 @@ export function toast(msg, bad = false) {
   clearTimeout(toastTimer)
   toastTimer = setTimeout(() => { state.toast = null; emit() }, bad ? 6000 : 2600)
 }
-export function confirmDialog(message, { ok = "Löschen", danger = true } = {}) {
+export function confirmDialog(message, { ok = t("Löschen"), danger = true } = {}) {
   return new Promise((resolve) => {
     state.confirm = { message, ok, danger, resolve: (v) => { state.confirm = null; emit(); resolve(v) } }
     emit()
@@ -104,10 +105,10 @@ export function confirmDialog(message, { ok = "Löschen", danger = true } = {}) 
 export function errMsg(err) {
   const data = err?.response?.data
   if (data && Object.keys(data).length) {
-    return Object.entries(data).map(([k, v]) => `${FIELD_LABELS[k] || k}: ${v.message}`).join(" · ")
+    return Object.entries(data).map(([k, v]) => `${fieldLabel(k)}: ${serverMsg(v.message)}`).join(" · ")
   }
-  if (err?.status === 0) return "Keine Verbindung zum Server."
-  return err?.response?.message || err?.message || String(err)
+  if (err?.status === 0) return t("Keine Verbindung zum Server.")
+  return serverMsg(err?.response?.message || err?.message || String(err))
 }
 
 // ---------- club settings (set by admins under Einstellungen) ----------
@@ -121,9 +122,11 @@ export function org() {
 }
 
 // ---------- domain helpers ----------
+// labels are German source strings, shown through t()
 export const CONDITIONS = {
   ok: "In Ordnung", defekt: "Defekt", reparatur: "In Reparatur", verschollen: "Verschollen",
 }
+export const condLabel = (c) => t(CONDITIONS[c] || c)
 export const FIELD_LABELS = {
   name: "Name", category: "Kategorie", type: "Typ", quantity: "Anzahl", location: "Lagerort",
   sublocation: "Platz", condition: "Zustand", serial: "Seriennummer", photos: "Fotos", notes: "Notizen",
@@ -131,6 +134,7 @@ export const FIELD_LABELS = {
   manufacturer: "Hersteller", model: "Modell", email: "E-Mail", password: "Passwort",
   passwordConfirm: "Passwort-Wiederholung", oldPassword: "Altes Passwort", keeper: "Zuständig",
 }
+export const fieldLabel = (k) => (FIELD_LABELS[k] ? t(FIELD_LABELS[k]) : k)
 
 // muted marker colours for fixture types in the patch grid; readable as tint + edge in both themes
 export const TAPES = [
@@ -165,8 +169,8 @@ export function fmtRange(item, mode = modeOf(item)) {
   return fp > 1 ? `${fmtAddr(item.dmx_universe, item.dmx_address)}–${pad3(end)}` : fmtAddr(item.dmx_universe, item.dmx_address)
 }
 
-const dtf = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })
-const dtfLong = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+const dtf = new Intl.DateTimeFormat(locale, { day: "2-digit", month: "2-digit", year: "numeric" })
+const dtfLong = new Intl.DateTimeFormat(locale, { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
 const parseDate = (s) => (s ? new Date(s.replace(" ", "T")) : null)
 export const fmtDate = (s) => { const d = parseDate(s); return d ? dtf.format(d) : "" }
 export const fmtDateTime = (s) => { const d = parseDate(s); return d ? dtfLong.format(d) : "" }

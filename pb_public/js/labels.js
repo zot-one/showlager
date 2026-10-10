@@ -1,5 +1,6 @@
 import { renderSVG } from "../vendor/uqr.mjs"
-import { state, CONDITIONS, typeOf, locOf, modesOf, userName, pad3, fmtDate, fileUrl, org } from "./store.js"
+import { state, condLabel, typeOf, locOf, modesOf, userName, pad3, fmtDate, fileUrl, org } from "./store.js"
+import { t, lang } from "./i18n.js"
 
 // Small labels, tiled onto A4 sticker sheets (two A5 stickers per sheet) and cut out by hand.
 // Geometry in mm, font sizes in pt.
@@ -23,18 +24,30 @@ export const SIZE_PRESETS = [
   ["Kabel", 40, 15], ["Klein", 50, 25], ["Standard", 64, 32], ["Mittel", 80, 40], ["Groß", 100, 60], ["Case (A6)", 148, 105],
 ]
 
+// [German key, English key, label (German source text)] — both keys work in every template
 export const FIELDS = [
-  ["Nr", "Inventarnummer"], ["Name", "Name"], ["Typ", "Hersteller + Modell"], ["Hersteller", "Hersteller"],
-  ["Modell", "Modell"], ["Kategorie", "Kategorie"], ["Seriennummer", "Seriennummer"], ["Anzahl", "Anzahl"],
-  ["Zustand", "Zustand"], ["Lagerort", "Lagerort"], ["Platz", "Platz"], ["Zuständig", "Zuständige Person"],
-  ["Modes", "DMX-Modes"], ["DMX", "Letzte DMX-Adresse"], ["Leistung", "Leistung"], ["Gewicht", "Gewicht"],
-  ["Notizen", "Notizen"], ["Verein", "Vereinsname"], ["Datum", "Druckdatum"], ["Link", "Link zum Teil"],
+  ["Nr", "No", "Inventarnummer"], ["Name", "Name", "Name"], ["Typ", "Type", "Hersteller + Modell"],
+  ["Hersteller", "Manufacturer", "Hersteller"], ["Modell", "Model", "Modell"], ["Kategorie", "Category", "Kategorie"],
+  ["Seriennummer", "Serial", "Seriennummer"], ["Anzahl", "Quantity", "Anzahl"], ["Zustand", "Condition", "Zustand"],
+  ["Lagerort", "Location", "Lagerort"], ["Platz", "Spot", "Platz"], ["Zuständig", "Keeper", "Zuständige Person"],
+  ["Modes", "Modes", "DMX-Modes"], ["DMX", "DMX", "Letzte DMX-Adresse"], ["Leistung", "Power", "Leistung"],
+  ["Gewicht", "Weight", "Gewicht"], ["Notizen", "Notes", "Notizen"], ["Verein", "Club", "Vereinsname"],
+  ["Datum", "Date", "Druckdatum"], ["Link", "Link", "Link zum Teil"],
 ]
+// key to insert in the current UI language
+export const fieldKey = (f) => (lang === "de" ? f[0] : f[1])
+const K = (de) => fieldKey(FIELDS.find((f) => f[0] === de))
 
-const SAMPLE = {
-  Name: "Beispielteil", Typ: "Hersteller Modell", Hersteller: "Hersteller", Modell: "Modell",
-  Kategorie: "Licht", Seriennummer: "SN-12345", Anzahl: "1", Zustand: "In Ordnung", Lagerort: "Keller", Platz: "Kiste 1",
+const sample = () => ({
+  Name: t("Beispielteil"), Typ: t("Hersteller Modell"), Hersteller: t("Hersteller"), Modell: t("Modell"),
+  Kategorie: t("Licht"), Seriennummer: "SN-12345", Anzahl: "1", Zustand: t("In Ordnung"), Lagerort: t("Keller"), Platz: t("Kiste 1"),
   Zuständig: "", Modes: "8ch · 16ch", DMX: "1.001 · 8ch", Leistung: "", Gewicht: "", Notizen: "",
+})
+
+// add the English aliases to a German-keyed value map
+function withAliases(vals) {
+  FIELDS.forEach(([de, en]) => { if (!(en in vals)) vals[en] = vals[de] })
+  return vals
 }
 
 const id = () => Math.random().toString(36).slice(2, 9)
@@ -43,13 +56,13 @@ const T = (o) => ({ id: id(), type: "text", font: "sans", size: 8, weight: 400, 
 const DEFAULT_TEMPLATE = {
   v: 2, w: 64, h: 32, gap: 3, margin: 5, splitA5: true,
   elements: [
-    T({ x: 3, y: 2.5, w: 39, h: 7, text: "{Nr}", size: 16, weight: 700, single: true, fit: true }),
-    T({ x: 3, y: 10, w: 39, h: 8, text: "{Name}", size: 8.5, weight: 600, fit: true }),
-    T({ x: 3, y: 18.5, w: 39, h: 3.5, text: "{Typ}", size: 6.5, color: "#444444", single: true, fit: true }),
+    T({ x: 3, y: 2.5, w: 39, h: 7, text: `{${K("Nr")}}`, size: 16, weight: 700, single: true, fit: true }),
+    T({ x: 3, y: 10, w: 39, h: 8, text: `{${K("Name")}}`, size: 8.5, weight: 600, fit: true }),
+    T({ x: 3, y: 18.5, w: 39, h: 3.5, text: `{${K("Typ")}}`, size: 6.5, color: "#444444", single: true, fit: true }),
     T({ x: 3, y: 22, w: 39, h: 3.5, text: "DMX {Modes}", size: 6, single: true, fit: true }),
     { id: id(), type: "qr", x: 44, y: 2.5, w: 17.5, h: 17.5 },
     { id: id(), type: "line", x: 3, y: 26.3, w: 58, h: 0.2, color: "#000000" },
-    T({ x: 3, y: 27, w: 58, h: 3, text: "{Verein}", size: 5, weight: 500, upper: true, color: "#555555", single: true, fit: true }),
+    T({ x: 3, y: 27, w: 58, h: 3, text: `{${K("Verein")}}`, size: 5, weight: 500, upper: true, color: "#555555", single: true, fit: true }),
   ],
 }
 export const defaultTemplate = () => structuredClone(DEFAULT_TEMPLATE)
@@ -92,19 +105,19 @@ export function resizeTemplate(tpl, w, h, scaleContent) {
 export const itemUrl = (item) => `${location.origin}/#/i/${item?.id || "beispiel"}`
 
 export function fieldValues(item) {
-  if (!item) return { ...SAMPLE, Nr: `${org().prefix}-0000`, Verein: org().name, Datum: fmtDate(new Date().toISOString()), Link: itemUrl(null) }
-  const t = typeOf(item)
+  if (!item) return withAliases({ ...sample(), Nr: `${org().prefix}-0000`, Verein: org().name, Datum: fmtDate(new Date().toISOString()), Link: itemUrl(null) })
+  const ty = typeOf(item)
   const l = locOf(item)
-  return {
-    Nr: item.inv_no, Name: item.name, Typ: t ? `${t.manufacturer} ${t.model}` : "",
-    Hersteller: t?.manufacturer || "", Modell: t?.model || "", Kategorie: item.category || "",
-    Seriennummer: item.serial || "", Anzahl: String(item.quantity || 1), Zustand: CONDITIONS[item.condition] || "",
+  return withAliases({
+    Nr: item.inv_no, Name: item.name, Typ: ty ? `${ty.manufacturer} ${ty.model}` : "",
+    Hersteller: ty?.manufacturer || "", Modell: ty?.model || "", Kategorie: item.category || "",
+    Seriennummer: item.serial || "", Anzahl: String(item.quantity || 1), Zustand: item.condition ? condLabel(item.condition) : "",
     Lagerort: l?.name || "", Platz: item.sublocation || "", Zuständig: l?.keeper ? userName(l.keeper) : "",
-    Modes: modesOf(t).map((m) => (String(m.name).includes(String(m.footprint)) ? m.name : `${m.name} (${m.footprint} Kan.)`)).join(" · "),
+    Modes: modesOf(ty).map((m) => (String(m.name).includes(String(m.footprint)) ? m.name : `${m.name} (${t("{n} Kan.", { n: m.footprint })})`)).join(" · "),
     DMX: item.dmx_address > 0 ? `${item.dmx_universe}.${pad3(item.dmx_address)}${item.dmx_mode ? ` · ${item.dmx_mode}` : ""}` : "",
-    Leistung: t?.power_w ? `${t.power_w} W` : "", Gewicht: t?.weight_kg ? `${String(t.weight_kg).replace(".", ",")} kg` : "",
+    Leistung: ty?.power_w ? `${ty.power_w} W` : "", Gewicht: ty?.weight_kg ? `${String(ty.weight_kg).replace(".", t(","))} kg` : "",
     Notizen: item.notes || "", Verein: org().name, Datum: fmtDate(new Date().toISOString()), Link: itemUrl(item),
-  }
+  })
 }
 
 // Replaces {Feld}. Returns null when the text uses fields and all of them are empty ("DMX {Modes}" on a cable).
@@ -242,7 +255,7 @@ function fontFaces() {
 
 export function printDoc(items, opts = {}, tpl = currentTemplate(), logoUrl = currentLogo()) {
   const { pages, slots } = paginate(items, tpl, opts)
-  return `<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Etiketten</title><style>${fontFaces()}
+  return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><title>${t("Etiketten")}</title><style>${fontFaces()}
 @page { size: A4 portrait; margin: 0; }
 html, body { margin: 0; padding: 0; }
 body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }

@@ -30,8 +30,13 @@ function nextInvNo(app) {
   return prefix + pad(n + 1, 4)
 }
 
-function authUserId(e) {
+// who acts: the logged-in user (also the owner of an API key) and, if any, the API key name
+function actorOf(e) {
   return e.auth && e.auth.collection().name === "users" ? e.auth.id : ""
+}
+function viaOf(e) {
+  const key = e.get("apiKey")
+  return key && key.name ? String(key.name) : ""
 }
 
 // Plain string snapshot of all diffable fields, comparable before/after save.
@@ -48,26 +53,24 @@ function snapshot(rec) {
 }
 
 // Server-owned fields: inv_no is assigned once, DMX stamp follows real DMX changes.
-function prepareItem(e, isCreate) {
-  const rec = e.record
-  const orig = isCreate ? null : rec.original()
-
-  if (isCreate) {
-    rec.set("inv_no", nextInvNo(e.app))
+// orig = null for new records. Used by REST hooks and MCP tools alike.
+function prepareItem(app, rec, orig, actorId) {
+  if (!orig) {
+    rec.set("inv_no", nextInvNo(app))
     if (rec.getInt("quantity") < 1) rec.set("quantity", 1)
     if (!rec.getString("condition")) rec.set("condition", "ok")
   } else {
     rec.set("inv_no", orig.getString("inv_no"))
   }
 
-  const dmxChanged = isCreate
+  const dmxChanged = !orig
     ? rec.getInt("dmx_address") > 0 || rec.getString("dmx_mode") !== ""
     : DMX_FIELDS.some((f) => orig.getString(f) !== rec.getString(f))
 
   if (dmxChanged) {
     rec.set("dmx_set_at", new DateTime())
-    rec.set("dmx_set_by", authUserId(e))
-  } else if (isCreate) {
+    rec.set("dmx_set_by", actorId || "")
+  } else if (!orig) {
     rec.set("dmx_set_at", "")
     rec.set("dmx_set_by", "")
   } else {
@@ -76,9 +79,9 @@ function prepareItem(e, isCreate) {
   }
 }
 
-function logChange(e, before, action) {
+function logChange(app, rec, before, action, actorId, via) {
   try {
-    const after = snapshot(e.record)
+    const after = snapshot(rec)
     const diff = {}
     for (const k in after) {
       if (before) {
@@ -89,15 +92,16 @@ function logChange(e, before, action) {
     }
     if (action === "update" && Object.keys(diff).length === 0) return
 
-    const rec = new Record(e.app.findCollectionByNameOrId("changes"))
-    rec.set("item", e.record.id)
-    rec.set("user", authUserId(e))
-    rec.set("action", action)
-    rec.set("diff", diff)
-    e.app.save(rec)
+    const ch = new Record(app.findCollectionByNameOrId("changes"))
+    ch.set("item", rec.id)
+    ch.set("user", actorId || "")
+    ch.set("via", via || "")
+    ch.set("action", action)
+    ch.set("diff", diff)
+    app.save(ch)
   } catch (err) {
-    e.app.logger().error("change log failed", "item", e.record.id, "error", String(err))
+    app.logger().error("change log failed", "item", rec.id, "error", String(err))
   }
 }
 
-module.exports = { prepareItem, snapshot, logChange }
+module.exports = { prepareItem, snapshot, logChange, actorOf, viaOf }

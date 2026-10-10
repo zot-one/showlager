@@ -1,13 +1,14 @@
 import { html, useEffect, useLayoutEffect, useMemo, useRef, useState } from "../../vendor/preact-htm.mjs"
 import { useStore, save, toast, errMsg, typeOf, locOf, go } from "../store.js"
 import { Icon, Plate, Head } from "../ui.js"
+import { t, tn } from "../i18n.js"
 import {
-  A4_W, A4_H, MM, FIELDS, SIZE_PRESETS, sheetHTML, fitText, elStyle, printItems, layoutSlots, paginate, pageHTML,
+  A4_W, A4_H, MM, FIELDS, fieldKey, SIZE_PRESETS, sheetHTML, fitText, elStyle, printItems, layoutSlots, paginate, pageHTML,
   currentTemplate, currentLogo, defaultTemplate, newElement, cloneElement, resizeTemplate,
 } from "../labels.js"
 
 const r2 = (v) => Math.round(v * 100) / 100
-const fmt = (v) => String(r2(v)).replace(".", ",")
+const fmt = (v) => String(r2(v)).replace(".", t(","))
 // the server returns JSON objects with sorted keys, so compare independent of key order
 const stable = (v) => JSON.stringify(v, (k, x) => (x && typeof x === "object" && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort()) : x))
 
@@ -24,8 +25,8 @@ function useFit(ref, w, h, maxH = Infinity) {
 
 function sheetInfo(tpl) {
   const { slots, cols, rows, areas } = layoutSlots(tpl)
-  if (!slots.length) return { n: 0, text: "Passt nicht auf den Bogen. Etikett verkleinern, Rand verringern oder A5-Trennung ausschalten." }
-  return { n: slots.length, text: `${slots.length} pro A4-Bogen (${cols} × ${rows}${areas > 1 ? " je A5-Hälfte" : ""})` }
+  if (!slots.length) return { n: 0, text: t("Passt nicht auf den Bogen. Etikett verkleinern, Rand verringern oder A5-Trennung ausschalten.") }
+  return { n: slots.length, text: t(areas > 1 ? "{n} pro A4-Bogen ({c} × {r} je A5-Hälfte)" : "{n} pro A4-Bogen ({c} × {r})", { n: slots.length, c: cols, r: rows }) }
 }
 
 // ------------------------------------------------------------------ print tab
@@ -73,59 +74,59 @@ function PrintTab({ ids }) {
   return html`<div class="labels">
     <div class="col">
       <section class="stack">
-        <div class="spread"><h2>Teile · ${chosen.length} ausgewählt${total !== chosen.length ? ` · ${total} Etiketten` : ""}</h2>
-          ${chosen.length ? html`<button class="btn sm ghost" onClick=${() => setCounts({})}>Alle abwählen</button>` : null}</div>
-        <input class="input" type="search" placeholder="Teile suchen…" value=${q} onInput=${(e) => setQ(e.target.value)} aria-label="Teile suchen" />
+        <div class="spread"><h2>${t("Teile · {n} ausgewählt", { n: chosen.length })}${total !== chosen.length ? ` · ${t("{n} Etiketten", { n: total })}` : ""}</h2>
+          ${chosen.length ? html`<button class="btn sm ghost" onClick=${() => setCounts({})}>${t("Alle abwählen")}</button>` : null}</div>
+        <input class="input" type="search" placeholder=${t("Teile suchen…")} value=${q} onInput=${(e) => setQ(e.target.value)} aria-label=${t("Teile suchen")} />
         <div class="picklist">
           ${listed.map((i) => html`<div key=${i.id} class=${`pick-row${counts[i.id] ? " on" : ""}`}>
             <label>
               <input type="checkbox" checked=${!!counts[i.id]} onChange=${() => toggle(i.id)} />
-              <${Plate} no=${i.inv_no} /><span class="n">${i.name}${i.quantity > 1 ? html` <span class="faint mono">(${i.quantity} Stück)</span>` : null}</span>
+              <${Plate} no=${i.inv_no} /><span class="n">${i.name}${i.quantity > 1 ? html` <span class="faint mono">(${t("{n} Stück", { n: i.quantity })})</span>` : null}</span>
             </label>
-            ${counts[i.id] ? html`<div class="stepper" title="Anzahl Etiketten">
-              <button type="button" aria-label=${`Ein Etikett weniger für ${i.inv_no}`} disabled=${counts[i.id] <= 1} onClick=${() => setCount(i.id, counts[i.id] - 1)}>−</button>
-              <input type="number" min="1" max="99" value=${counts[i.id]} aria-label=${`Anzahl Etiketten für ${i.inv_no}`}
+            ${counts[i.id] ? html`<div class="stepper" title=${t("Anzahl Etiketten")}>
+              <button type="button" aria-label=${t("Ein Etikett weniger für {no}", { no: i.inv_no })} disabled=${counts[i.id] <= 1} onClick=${() => setCount(i.id, counts[i.id] - 1)}>−</button>
+              <input type="number" min="1" max="99" value=${counts[i.id]} aria-label=${t("Anzahl Etiketten für {no}", { no: i.inv_no })}
                 onInput=${(e) => e.target.value !== "" && setCount(i.id, e.target.value)} onFocus=${(e) => e.target.select()} />
-              <button type="button" aria-label=${`Ein Etikett mehr für ${i.inv_no}`} onClick=${() => setCount(i.id, counts[i.id] + 1)}>+</button>
+              <button type="button" aria-label=${t("Ein Etikett mehr für {no}", { no: i.inv_no })} onClick=${() => setCount(i.id, counts[i.id] + 1)}>+</button>
             </div>` : null}
           </div>`)}
-          ${!listed.length ? html`<p class="muted" style="padding:12px">Keine Treffer.</p>` : null}
+          ${!listed.length ? html`<p class="muted" style="padding:12px">${t("Keine Treffer.")}</p>` : null}
         </div>
-        ${qq && listed.length ? html`<button class="btn sm" style="justify-self:start" onClick=${() => selectMany(listed)}>Alle ${listed.length} Treffer auswählen</button>` : null}
+        ${qq && listed.length ? html`<button class="btn sm" style="justify-self:start" onClick=${() => selectMany(listed)}>${t("Alle {n} Treffer auswählen", { n: listed.length })}</button>` : null}
         ${chosen.length ? html`<div class="row" style="font-size:14px">
-          <span class="muted">Anzahl für alle:</span>
+          <span class="muted">${t("Anzahl für alle:")}</span>
           <div class="stepper">
-            <button type="button" aria-label="Weniger" disabled=${bulk <= 1} onClick=${() => setBulk(clamp(bulk - 1))}>−</button>
-            <input type="number" min="1" max="99" value=${bulk} aria-label="Anzahl für alle" onInput=${(e) => e.target.value !== "" && setBulk(clamp(e.target.value))} onFocus=${(e) => e.target.select()} />
-            <button type="button" aria-label="Mehr" onClick=${() => setBulk(clamp(bulk + 1))}>+</button>
+            <button type="button" aria-label=${t("Weniger")} disabled=${bulk <= 1} onClick=${() => setBulk(clamp(bulk - 1))}>−</button>
+            <input type="number" min="1" max="99" value=${bulk} aria-label=${t("Anzahl für alle")} onInput=${(e) => e.target.value !== "" && setBulk(clamp(e.target.value))} onFocus=${(e) => e.target.select()} />
+            <button type="button" aria-label=${t("Mehr")} onClick=${() => setBulk(clamp(bulk + 1))}>+</button>
           </div>
-          <button class="btn sm" onClick=${() => setAll(() => bulk)}>Übernehmen</button>
-          ${chosen.some((i) => i.quantity > 1) ? html`<button class="btn sm ghost" title="Für jedes Stück ein Etikett, z. B. 12 Kabel = 12 Etiketten"
-            onClick=${() => setAll((id) => s.items.find((i) => i.id === id)?.quantity || 1)}>Stückzahl aus Inventar</button>` : null}
+          <button class="btn sm" onClick=${() => setAll(() => bulk)}>${t("Übernehmen")}</button>
+          ${chosen.some((i) => i.quantity > 1) ? html`<button class="btn sm ghost" title=${t("Für jedes Stück ein Etikett, z. B. 12 Kabel = 12 Etiketten")}
+            onClick=${() => setAll((id) => s.items.find((i) => i.id === id)?.quantity || 1)}>${t("Stückzahl aus Inventar")}</button>` : null}
         </div>` : null}
       </section>
 
       <section class="panel">
-        <h2>Druck</h2>
-        <p style="font-size:14px">Etikett ${fmt(tpl.w)} × ${fmt(tpl.h)} mm · ${info.text}</p>
-        <label class="field" style="max-width:220px"><span>Start bei Position</span>
+        <h2>${t("Druck")}</h2>
+        <p style="font-size:14px">${t("Etikett")} ${fmt(tpl.w)} × ${fmt(tpl.h)} mm · ${info.text}</p>
+        <label class="field" style="max-width:220px"><span>${t("Start bei Position")}</span>
           <input type="number" min="1" max=${slots.length || 1} value=${start + 1} onInput=${(e) => setStart(Math.max(0, Math.min((slots.length || 1) - 1, (Number(e.target.value) || 1) - 1)))} /></label>
-        <p class="muted" style="font-size:13px">Angebrochener Bogen? In der Vorschau auf die erste freie Stelle klicken.</p>
-        <label class="check"><input type="checkbox" checked=${cut} onChange=${(e) => setCut(e.target.checked)} />Schnittlinien drucken</label>
+        <p class="muted" style="font-size:13px">${t("Angebrochener Bogen? In der Vorschau auf die erste freie Stelle klicken.")}</p>
+        <label class="check"><input type="checkbox" checked=${cut} onChange=${(e) => setCut(e.target.checked)} />${t("Schnittlinien drucken")}</label>
         <button class="btn primary" disabled=${!total || !slots.length} onClick=${() => printItems(jobs, { start, cut })}>
-          <${Icon} name="printer" />${total ? `${total} Etikett${total > 1 ? "en" : ""} drucken (${pages.length} Bogen)` : "Teile auswählen"}</button>
-        <p class="muted" style="font-size:13px">Im Druckdialog Skalierung 100 % bzw. „Tatsächliche Größe“ und Ränder „Keine“ wählen.</p>
+          <${Icon} name="printer" />${total ? `${tn(total, "{n} Etikett drucken", "{n} Etiketten drucken")} (${tn(pages.length, "{n} Bogen", "{n} Bögen")})` : t("Teile auswählen")}</button>
+        <p class="muted" style="font-size:13px">${t("Im Druckdialog Skalierung 100 % bzw. „Tatsächliche Größe“ und Ränder „Keine“ wählen.")}</p>
       </section>
     </div>
 
     <section class="stack">
       <div class="spread">
-        <h2>A4-Bogen${shown.length > 1 ? ` ${pg + 1} von ${shown.length}` : ""}</h2>
+        <h2>${t("A4-Bogen")}${shown.length > 1 ? ` ${t("{a} von {b}", { a: pg + 1, b: shown.length })}` : ""}</h2>
         <div class="row">
           ${shown.length > 1 ? html`
-            <button class="btn sm icon" aria-label="Vorheriger Bogen" disabled=${pg === 0} onClick=${() => setPage(pg - 1)}><${Icon} name="back" /></button>
-            <button class="btn sm icon" aria-label="Nächster Bogen" style="transform:scaleX(-1)" disabled=${pg === shown.length - 1} onClick=${() => setPage(pg + 1)}><${Icon} name="back" /></button>` : null}
-          <a class="btn sm" href="#/etiketten/vorlage"><${Icon} name="edit" />Etikett gestalten</a>
+            <button class="btn sm icon" aria-label=${t("Vorheriger Bogen")} disabled=${pg === 0} onClick=${() => setPage(pg - 1)}><${Icon} name="back" /></button>
+            <button class="btn sm icon" aria-label=${t("Nächster Bogen")} style="transform:scaleX(-1)" disabled=${pg === shown.length - 1} onClick=${() => setPage(pg + 1)}><${Icon} name="back" /></button>` : null}
+          <a class="btn sm" href="#/etiketten/vorlage"><${Icon} name="edit" />${t("Etikett gestalten")}</a>
         </div>
       </div>
       <div ref=${box} style="width:100%">
@@ -133,7 +134,7 @@ function PrintTab({ ids }) {
           <div class="lhost" ref=${host} style=${`transform:scale(${scale});width:${A4_W}mm;height:${A4_H}mm`} dangerouslySetInnerHTML=${{ __html: markup }}></div>
         </div>
       </div>
-      <p class="muted" style="font-size:13px">Schraffiert: schon verbrauchte Stellen. Die graue Linie in der Mitte ist die Trennung der beiden A5-Sticker.</p>
+      <p class="muted" style="font-size:13px">${t("Schraffiert: schon verbrauchte Stellen. Die graue Linie in der Mitte ist die Trennung der beiden A5-Sticker.")}</p>
     </section>
   </div>`
 }
@@ -142,7 +143,7 @@ function PrintTab({ ids }) {
 
 let draft = null // unsaved template survives switching tabs
 
-const TYPE_LABEL = { text: "Text", qr: "QR-Code", line: "Linie", box: "Rahmen", image: "Logo" }
+const TYPE_LABEL = { text: "Text", qr: "QR-Code", line: "Linie", box: "Rahmen", image: "Logo" } // German source, shown via t()
 const TYPE_ICON = { text: "text", qr: "grid", line: "line", box: "rect", image: "image" }
 const HANDLES = { nw: [0, 0], n: [50, 0], ne: [100, 0], e: [100, 50], se: [100, 100], s: [50, 100], sw: [0, 100], w: [0, 50] }
 const snapStep = (v) => Math.round(v * 4) / 4
@@ -364,10 +365,10 @@ function Designer() {
 
   // ---------- actions
   const doSave = async () => {
-    if (!s.settings) { toast("Einstellungen fehlen auf dem Server.", true); return }
+    if (!s.settings) { toast(t("Einstellungen fehlen auf dem Server."), true); return }
     if (!info.n) { toast(info.text, true); return }
     setBusy(true)
-    try { await save("settings", s.settings.id, { label_template: tpl }); toast("Vorlage gespeichert") } catch (err) { toast(errMsg(err), true) } finally { setBusy(false) }
+    try { await save("settings", s.settings.id, { label_template: tpl }); toast(t("Vorlage gespeichert")) } catch (err) { toast(errMsg(err), true) } finally { setBusy(false) }
   }
   const discard = () => { hist.current = { past: [], future: [], key: null, at: 0 }; apply(structuredClone(saved)); setSelId(null) }
   const uploadLogo = async (file) => {
@@ -375,7 +376,7 @@ function Designer() {
     try {
       await save("settings", s.settings.id, { label_logo: file })
       if (!tplRef.current.elements.some((e) => e.type === "image")) addEl(newElement("image", tplRef.current))
-      toast("Logo hochgeladen")
+      toast(t("Logo hochgeladen"))
     } catch (err) { toast(errMsg(err), true) }
   }
   const insertField = (key) => {
@@ -393,37 +394,37 @@ function Designer() {
   const preset = SIZE_PRESETS.find(([, pw, ph]) => pw === W && ph === H)
 
   return html`<div class="stack" style="gap:14px">
-    <div class="ld-tools" role="toolbar" aria-label="Werkzeuge">
-      <button class="btn sm" onClick=${() => add("text")}><${Icon} name="text" />Text</button>
-      <select aria-label="Feld hinzufügen" style="max-width:130px" value="" onChange=${(e) => { if (e.target.value) add("field", e.target.value); e.target.value = "" }}>
-        <option value="">+ Feld…</option>
-        ${FIELDS.map(([k, l]) => html`<option value=${k}>${l}</option>`)}
+    <div class="ld-tools" role="toolbar" aria-label=${t("Werkzeuge")}>
+      <button class="btn sm" onClick=${() => add("text")}><${Icon} name="text" />${t("Text")}</button>
+      <select aria-label=${t("Feld hinzufügen")} style="max-width:130px" value="" onChange=${(e) => { if (e.target.value) add("field", e.target.value); e.target.value = "" }}>
+        <option value="">+ ${t("Feld…")}</option>
+        ${FIELDS.map((f) => html`<option value=${fieldKey(f)}>${t(f[2])}</option>`)}
       </select>
       <button class="btn sm" onClick=${() => add("qr")}><${Icon} name="grid" />QR</button>
-      <button class="btn sm" onClick=${() => add("line")}><${Icon} name="line" />Linie</button>
-      <button class="btn sm" onClick=${() => add("box")}><${Icon} name="rect" />Rahmen</button>
+      <button class="btn sm" onClick=${() => add("line")}><${Icon} name="line" />${t("Linie")}</button>
+      <button class="btn sm" onClick=${() => add("box")}><${Icon} name="rect" />${t("Rahmen")}</button>
       <label class="btn sm"><${Icon} name="image" />Logo<input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" hidden onChange=${(e) => { uploadLogo(e.target.files[0]); e.target.value = "" }} /></label>
       <span class="sep"></span>
-      <button class="btn sm icon" title="Rückgängig (⌘Z)" aria-label="Rückgängig" disabled=${!hist.current.past.length} onClick=${undo}><${Icon} name="undo" /></button>
-      <button class="btn sm icon" title="Wiederholen (⇧⌘Z)" aria-label="Wiederholen" disabled=${!hist.current.future.length} onClick=${redo}><${Icon} name="redo" /></button>
+      <button class="btn sm icon" title=${t("Rückgängig (⌘Z)")} aria-label=${t("Rückgängig")} disabled=${!hist.current.past.length} onClick=${undo}><${Icon} name="undo" /></button>
+      <button class="btn sm icon" title=${t("Wiederholen (⇧⌘Z)")} aria-label=${t("Wiederholen")} disabled=${!hist.current.future.length} onClick=${redo}><${Icon} name="redo" /></button>
       <div class="row" style="margin-left:auto;gap:4px">
-        <button class="btn sm ghost" onClick=${() => { commit(defaultTemplate()); setSelId(null) }}>Standardvorlage</button>
-        ${dirty ? html`<button class="btn sm ghost" onClick=${discard}>Verwerfen</button>` : null}
-        <button class="btn sm primary" disabled=${busy || !dirty} onClick=${doSave}><${Icon} name="check" />${dirty ? "Speichern" : "Gespeichert"}</button>
+        <button class="btn sm ghost" onClick=${() => { commit(defaultTemplate()); setSelId(null) }}>${t("Standardvorlage")}</button>
+        ${dirty ? html`<button class="btn sm ghost" onClick=${discard}>${t("Verwerfen")}</button>` : null}
+        <button class="btn sm primary" disabled=${busy || !dirty} onClick=${doSave}><${Icon} name="check" />${dirty ? t("Speichern") : t("Gespeichert")}</button>
       </div>
     </div>
 
     <div class="ld">
       <div class="ld-board">
         <div class="spread" style="margin:-12px 0 14px">
-          <label class="row" style="gap:8px;font-size:13px;color:var(--muted)">Vorschau mit
+          <label class="row" style="gap:8px;font-size:13px;color:var(--muted)">${t("Vorschau mit")}
             <select class="input" style="min-height:30px;width:auto;max-width:260px;font-size:13px;padding:2px 8px" value=${sampleId} onChange=${(e) => setSampleId(e.target.value)}>
-              <option value="">Beispieldaten</option>
+              <option value="">${t("Beispieldaten")}</option>
               ${s.items.map((i) => html`<option value=${i.id}>${i.inv_no} · ${i.name}</option>`)}
             </select></label>
           <span class="row" style="gap:12px;font-size:13px;color:var(--muted)">
             <span class="mono">${fmt(W)} × ${fmt(H)} mm · ${Math.round(scale * 100)} %</span>
-            <label class="check" style="font-size:13px;color:var(--muted)"><input type="checkbox" checked=${grid} onChange=${(e) => setGrid(e.target.checked)} />Raster</label>
+            <label class="check" style="font-size:13px;color:var(--muted)"><input type="checkbox" checked=${grid} onChange=${(e) => setGrid(e.target.checked)} />${t("Raster")}</label>
           </span>
         </div>
         <div ref=${box} style="width:100%">
@@ -456,40 +457,40 @@ function Designer() {
             onDup=${() => addEl(cloneElement(selEl))} onDel=${() => removeEl(selEl.id)} onUp=${() => reorder(selEl.id, 1)} onDown=${() => reorder(selEl.id, -1)}
             logoUrl=${logoUrl} uploadLogo=${uploadLogo} onDone=${() => setSelId(null)} />`
           : html`<section class="panel">
-            <h3>Etikett</h3>
-            <label class="field"><span>Größe</span>
+            <h3>${t("Etikett")}</h3>
+            <label class="field"><span>${t("Größe")}</span>
               <select value=${preset ? `${W}x${H}` : ""} onChange=${(e) => { const [pw, ph] = e.target.value.split("x").map(Number); if (pw) setSize(pw, ph) }}>
-                ${!preset ? html`<option value="">Eigene Größe</option>` : null}
-                ${SIZE_PRESETS.map(([n, pw, ph]) => html`<option value=${`${pw}x${ph}`}>${n} · ${pw} × ${ph} mm</option>`)}
+                ${!preset ? html`<option value="">${t("Eigene Größe")}</option>` : null}
+                ${SIZE_PRESETS.map(([n, pw, ph]) => html`<option value=${`${pw}x${ph}`}>${t(n)} · ${pw} × ${ph} mm</option>`)}
               </select></label>
             <div class="ld-xywh" style="grid-template-columns:1fr 1fr">
-              <${Num} label="Breite (mm)" value=${W} step="1" min="10" onChange=${(v) => setSize(v, H)} />
-              <${Num} label="Höhe (mm)" value=${H} step="1" min="8" onChange=${(v) => setSize(W, v)} />
+              <${Num} label=${t("Breite (mm)")} value=${W} step="1" min="10" onChange=${(v) => setSize(v, H)} />
+              <${Num} label=${t("Höhe (mm)")} value=${H} step="1" min="8" onChange=${(v) => setSize(W, v)} />
             </div>
-            <label class="check"><input type="checkbox" checked=${scaleContent} onChange=${(e) => setScaleContent(e.target.checked)} />Inhalt beim Ändern der Größe mitskalieren</label>
+            <label class="check"><input type="checkbox" checked=${scaleContent} onChange=${(e) => setScaleContent(e.target.checked)} />${t("Inhalt beim Ändern der Größe mitskalieren")}</label>
           </section>
           <section class="panel">
-            <h3>Bogen</h3>
+            <h3>${t("Bogen")}</h3>
             <div class="ld-xywh" style="grid-template-columns:1fr 1fr">
-              <${Num} label="Abstand (mm)" value=${tpl.gap ?? 3} step="0.5" min="0" onChange=${(v) => setSheet({ gap: Math.max(0, v) }, "gap")} />
-              <${Num} label="Rand (mm)" value=${tpl.margin ?? 5} step="0.5" min="0" onChange=${(v) => setSheet({ margin: Math.max(0, v) }, "margin")} />
+              <${Num} label=${t("Abstand (mm)")} value=${tpl.gap ?? 3} step="0.5" min="0" onChange=${(v) => setSheet({ gap: Math.max(0, v) }, "gap")} />
+              <${Num} label=${t("Rand (mm)")} value=${tpl.margin ?? 5} step="0.5" min="0" onChange=${(v) => setSheet({ margin: Math.max(0, v) }, "margin")} />
             </div>
-            <label class="check"><input type="checkbox" checked=${tpl.splitA5 !== false} onChange=${(e) => setSheet({ splitA5: e.target.checked })} />Nicht über die Trennung der A5-Sticker drucken</label>
+            <label class="check"><input type="checkbox" checked=${tpl.splitA5 !== false} onChange=${(e) => setSheet({ splitA5: e.target.checked })} />${t("Nicht über die Trennung der A5-Sticker drucken")}</label>
             <p class=${info.n ? "hint" : "err"}>${info.text}</p>
           </section>
           <section class="panel">
-            <p class="muted" style="font-size:13px">Element anklicken zum Bearbeiten, ziehen zum Verschieben, an den Griffen ziehen für die Größe. Doppelklick auf Text bearbeitet ihn direkt.</p>
+            <p class="muted" style="font-size:13px">${t("Element anklicken zum Bearbeiten, ziehen zum Verschieben, an den Griffen ziehen für die Größe. Doppelklick auf Text bearbeitet ihn direkt.")}</p>
             <div class="stack" style="font-size:13px;color:var(--muted);gap:4px">
-              <span><span class="kbd">←↑→↓</span> 0,25 mm, mit <span class="kbd">⇧</span> 2 mm</span>
-              <span><span class="kbd">⌘D</span> duplizieren · <span class="kbd">⌫</span> löschen · <span class="kbd">⌘Z</span> rückgängig</span>
-              <span><span class="kbd">⌥</span> beim Ziehen: ohne Einrasten</span>
+              <span><span class="kbd">←↑→↓</span> ${t("0,25 mm, mit")} <span class="kbd">⇧</span> 2 mm</span>
+              <span><span class="kbd">⌘D</span> ${t("duplizieren")} · <span class="kbd">⌫</span> ${t("löschen")} · <span class="kbd">⌘Z</span> ${t("rückgängig")}</span>
+              <span><span class="kbd">⌥</span> ${t("beim Ziehen: ohne Einrasten")}</span>
             </div>
           </section>`}
         <section class="panel">
-          <h2>Ebenen</h2>
+          <h2>${t("Ebenen")}</h2>
           <div class="ld-layers">
             ${[...tpl.elements].reverse().map((el) => html`<button aria-current=${el.id === selId} onClick=${() => setSelId(el.id)}>
-              <${Icon} name=${TYPE_ICON[el.type]} />${el.type === "text" ? el.text.split("\n")[0] || "Text" : TYPE_LABEL[el.type]}</button>`)}
+              <${Icon} name=${TYPE_ICON[el.type]} />${el.type === "text" ? el.text.split("\n")[0] || t("Text") : t(TYPE_LABEL[el.type])}</button>`)}
           </div>
         </section>
       </aside>
@@ -500,66 +501,66 @@ function Designer() {
 function Props({ el, update, textRef, insertField, onDup, onDel, onUp, onDown, logoUrl, uploadLogo, onDone }) {
   const thin = el.type === "line"
   return html`<section class="panel">
-    <div class="spread"><h3>${TYPE_LABEL[el.type]}</h3>
+    <div class="spread"><h3>${t(TYPE_LABEL[el.type])}</h3>
       <div class="row" style="gap:4px">
-        <button class="btn sm icon" title="Nach hinten" aria-label="Nach hinten" onClick=${onDown}>↓</button>
-        <button class="btn sm icon" title="Nach vorne" aria-label="Nach vorne" onClick=${onUp}>↑</button>
-        <button class="btn sm icon" title="Duplizieren (⌘D)" aria-label="Duplizieren" onClick=${onDup}><${Icon} name="copy" /></button>
-        <button class="btn sm icon danger" title="Löschen" aria-label="Löschen" onClick=${onDel}><${Icon} name="trash" /></button>
+        <button class="btn sm icon" title=${t("Nach hinten")} aria-label=${t("Nach hinten")} onClick=${onDown}>↓</button>
+        <button class="btn sm icon" title=${t("Nach vorne")} aria-label=${t("Nach vorne")} onClick=${onUp}>↑</button>
+        <button class="btn sm icon" title=${t("Duplizieren (⌘D)")} aria-label=${t("Duplizieren")} onClick=${onDup}><${Icon} name="copy" /></button>
+        <button class="btn sm icon danger" title=${t("Löschen")} aria-label=${t("Löschen")} onClick=${onDel}><${Icon} name="trash" /></button>
       </div>
     </div>
     <div class="ld-xywh">
       <${Num} label="X" value=${el.x} onChange=${(v) => update({ x: v })} />
       <${Num} label="Y" value=${el.y} onChange=${(v) => update({ y: v })} />
-      <${Num} label="Breite" value=${el.w} min="0.1" onChange=${(v) => update(el.type === "qr" ? { w: v, h: v } : { w: v })} />
-      <${Num} label="Höhe" value=${el.h} min="0.1" step=${thin ? 0.05 : 0.25} onChange=${(v) => update(el.type === "qr" ? { w: v, h: v } : { h: v })} />
+      <${Num} label=${t("Breite")} value=${el.w} min="0.1" onChange=${(v) => update(el.type === "qr" ? { w: v, h: v } : { w: v })} />
+      <${Num} label=${t("Höhe")} value=${el.h} min="0.1" step=${thin ? 0.05 : 0.25} onChange=${(v) => update(el.type === "qr" ? { w: v, h: v } : { h: v })} />
     </div>
 
     ${el.type === "text" ? html`
-      <label class="field"><span>Inhalt</span>
+      <label class="field"><span>${t("Inhalt")}</span>
         <textarea ref=${textRef} rows="2" value=${el.text} onInput=${(e) => update({ text: e.target.value }, `${el.id}:text`)}></textarea>
-        <small>Felder in geschweiften Klammern werden pro Teil ersetzt. Ist kein Feld befüllt, entfällt der Text.</small>
+        <small>${t("Felder in geschweiften Klammern werden pro Teil ersetzt. Ist kein Feld befüllt, entfällt der Text.")}</small>
       </label>
-      <div class="ld-fields">${FIELDS.map(([k, l]) => html`<button type="button" title=${l} onClick=${() => insertField(k)}>${k}</button>`)}</div>
-      <div class="field"><span>Schrift</span>
+      <div class="ld-fields">${FIELDS.map((f) => html`<button type="button" title=${t(f[2])} onClick=${() => insertField(fieldKey(f))}>${fieldKey(f)}</button>`)}</div>
+      <div class="field"><span>${t("Schrift")}</span>
         <div class="row">
-          <${Seg} label="Schriftart" value=${el.font} onChange=${(v) => update({ font: v })} options=${[["sans", "Sans"], ["mono", "Mono"]]} />
+          <${Seg} label=${t("Schriftart")} value=${el.font} onChange=${(v) => update({ font: v })} options=${[["sans", "Sans"], ["mono", "Mono"]]} />
           <label class="row" style="gap:6px;font-size:13px;color:var(--muted)">
             <input class="input" type="number" min="3" max="200" step="0.5" style="width:76px;min-height:34px" value=${el.size}
               onInput=${(e) => e.target.value && update({ size: Number(e.target.value) })} />pt</label>
         </div>
       </div>
-      <div class="field"><span>Stärke</span>
-        <${Seg} label="Stärke" value=${el.weight} onChange=${(v) => update({ weight: v })} options=${[[400, "Normal"], [500, "Mittel"], [600, "Halbfett"], [700, "Fett"]]} /></div>
-      <div class="field"><span>Ausrichtung</span>
+      <div class="field"><span>${t("Stärke")}</span>
+        <${Seg} label=${t("Stärke")} value=${el.weight} onChange=${(v) => update({ weight: v })} options=${[[400, t("Normal")], [500, t("Mittel")], [600, t("Halbfett")], [700, t("Fett")]]} /></div>
+      <div class="field"><span>${t("Ausrichtung")}</span>
         <div class="row">
-          <${Seg} label="Horizontal" value=${el.align} onChange=${(v) => update({ align: v })} options=${[["left", "Links"], ["center", "Mitte"], ["right", "Rechts"]]} />
-          <${Seg} label="Vertikal" value=${el.valign || "top"} onChange=${(v) => update({ valign: v })} options=${[["top", "Oben"], ["middle", "Mitte"], ["bottom", "Unten"]]} />
+          <${Seg} label=${t("Horizontal")} value=${el.align} onChange=${(v) => update({ align: v })} options=${[["left", t("Links")], ["center", t("Mitte")], ["right", t("Rechts")]]} />
+          <${Seg} label=${t("Vertikal")} value=${el.valign || "top"} onChange=${(v) => update({ valign: v })} options=${[["top", t("Oben")], ["middle", t("Mitte")], ["bottom", t("Unten")]]} />
         </div>
       </div>
-      <div class="field"><span>Farbe</span>
-        <${Seg} label="Farbe" value=${el.color || "#000000"} onChange=${(v) => update({ color: v })} options=${[["#000000", "Schwarz"], ["#444444", "Dunkelgrau"], ["#777777", "Grau"]]} /></div>
+      <div class="field"><span>${t("Farbe")}</span>
+        <${Seg} label=${t("Farbe")} value=${el.color || "#000000"} onChange=${(v) => update({ color: v })} options=${[["#000000", t("Schwarz")], ["#444444", t("Dunkelgrau")], ["#777777", t("Grau")]]} /></div>
       <div class="stack" style="gap:6px">
-        <label class="check"><input type="checkbox" checked=${!!el.upper} onChange=${(e) => update({ upper: e.target.checked })} />Großbuchstaben</label>
-        <label class="check"><input type="checkbox" checked=${!!el.single} onChange=${(e) => update({ single: e.target.checked })} />Einzeilig</label>
-        <label class="check"><input type="checkbox" checked=${!!el.fit} onChange=${(e) => update({ fit: e.target.checked })} />Bei langem Text automatisch verkleinern</label>
+        <label class="check"><input type="checkbox" checked=${!!el.upper} onChange=${(e) => update({ upper: e.target.checked })} />${t("Großbuchstaben")}</label>
+        <label class="check"><input type="checkbox" checked=${!!el.single} onChange=${(e) => update({ single: e.target.checked })} />${t("Einzeilig")}</label>
+        <label class="check"><input type="checkbox" checked=${!!el.fit} onChange=${(e) => update({ fit: e.target.checked })} />${t("Bei langem Text automatisch verkleinern")}</label>
       </div>` : null}
 
     ${el.type === "line" || el.type === "box" ? html`
       ${el.type === "box" ? html`<div class="ld-xywh" style="grid-template-columns:1fr 1fr">
-        <${Num} label="Strichstärke (mm)" value=${el.stroke ?? 0.3} step="0.05" min="0.05" onChange=${(v) => update({ stroke: v })} />
-        <${Num} label="Eckenradius (mm)" value=${el.radius || 0} step="0.5" min="0" onChange=${(v) => update({ radius: v })} />
-      </div>` : html`<p class="muted" style="font-size:13px">Die kürzere Seite ist die Strichstärke.</p>`}
-      <div class="field"><span>Farbe</span>
-        <${Seg} label="Farbe" value=${el.color || "#000000"} onChange=${(v) => update({ color: v })} options=${[["#000000", "Schwarz"], ["#777777", "Grau"], ["#bbbbbb", "Hellgrau"]]} /></div>` : null}
+        <${Num} label=${t("Strichstärke (mm)")} value=${el.stroke ?? 0.3} step="0.05" min="0.05" onChange=${(v) => update({ stroke: v })} />
+        <${Num} label=${t("Eckenradius (mm)")} value=${el.radius || 0} step="0.5" min="0" onChange=${(v) => update({ radius: v })} />
+      </div>` : html`<p class="muted" style="font-size:13px">${t("Die kürzere Seite ist die Strichstärke.")}</p>`}
+      <div class="field"><span>${t("Farbe")}</span>
+        <${Seg} label=${t("Farbe")} value=${el.color || "#000000"} onChange=${(v) => update({ color: v })} options=${[["#000000", t("Schwarz")], ["#777777", t("Grau")], ["#bbbbbb", t("Hellgrau")]]} /></div>` : null}
 
-    ${el.type === "qr" ? html`<p class=${el.w < 12 ? "err" : "muted"} style="font-size:13px">Enthält den Link zum jeweiligen Teil.${el.w < 12 ? " Unter etwa 12 mm wird das Scannen mit dem Handy unzuverlässig." : ""}</p>` : null}
+    ${el.type === "qr" ? html`<p class=${el.w < 12 ? "err" : "muted"} style="font-size:13px">${t("Enthält den Link zum jeweiligen Teil.")}${el.w < 12 ? ` ${t("Unter etwa 12 mm wird das Scannen mit dem Handy unzuverlässig.")}` : ""}</p>` : null}
 
     ${el.type === "image" ? html`
-      <p class="muted" style="font-size:13px">${logoUrl ? "Das Logo gilt für alle Etiketten." : "Noch kein Logo hochgeladen."}</p>
-      <label class="btn sm" style="justify-self:start">${logoUrl ? "Logo ersetzen" : "Logo hochladen"}
+      <p class="muted" style="font-size:13px">${logoUrl ? t("Das Logo gilt für alle Etiketten.") : t("Noch kein Logo hochgeladen.")}</p>
+      <label class="btn sm" style="justify-self:start">${logoUrl ? t("Logo ersetzen") : t("Logo hochladen")}
         <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" hidden onChange=${(e) => { uploadLogo(e.target.files[0]); e.target.value = "" }} /></label>` : null}
-    <button class="btn sm ghost" style="justify-self:start" onClick=${onDone}>Fertig</button>
+    <button class="btn sm ghost" style="justify-self:start" onClick=${onDone}>${t("Fertig")}</button>
   </section>`
 }
 
@@ -567,10 +568,10 @@ function Props({ el, update, textRef, insertField, onDup, onDel, onUp, onDown, l
 
 export function Labels({ ids, tab }) {
   return html`<div class=${`wrap${tab === "design" ? " wide" : ""}`}>
-    <${Head} title=${html`<h1>Etiketten</h1>`} sub="Kleine Etiketten mit QR-Code, gekachelt auf A4-Sticker-Bögen zum Ausschneiden." />
+    <${Head} title=${html`<h1>${t("Etiketten")}</h1>`} sub=${t("Kleine Etiketten mit QR-Code, gekachelt auf A4-Sticker-Bögen zum Ausschneiden.")} />
     <div class="tabs" role="tablist">
-      <button role="tab" aria-selected=${tab !== "design"} onClick=${() => go(`/etiketten${ids.length ? `?ids=${ids.join(",")}` : ""}`)}>Drucken</button>
-      <button role="tab" aria-selected=${tab === "design"} onClick=${() => go("/etiketten/vorlage")}>Etikett gestalten</button>
+      <button role="tab" aria-selected=${tab !== "design"} onClick=${() => go(`/etiketten${ids.length ? `?ids=${ids.join(",")}` : ""}`)}>${t("Drucken")}</button>
+      <button role="tab" aria-selected=${tab === "design"} onClick=${() => go("/etiketten/vorlage")}>${t("Etikett gestalten")}</button>
     </div>
     ${tab === "design" ? html`<${Designer} />` : html`<${PrintTab} ids=${ids} />`}
   </div>`
