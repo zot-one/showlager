@@ -1,0 +1,9 @@
+# PocketBase binary and runtime data (database, uploads, backups)
+bin/
+pb_data/
+
+# local tooling
+node_modules/
+.env
+*.log
+.DS_Store
