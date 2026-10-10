@@ -25,7 +25,7 @@ function newCode(app, reason) {
   console.log([
     "",
     line,
-    "  Showtechnik-Inventar ist noch nicht eingerichtet." + (reason ? " (" + reason + ")" : ""),
+    "  Showlager ist noch nicht eingerichtet." + (reason ? " (" + reason + ")" : ""),
     "  Einrichtungscode: " + code,
     "  Öffne die App im Browser und gib den Code dort ein.",
     line,

@@ -20,7 +20,7 @@ export function Login() {
     <form class="login-card" onSubmit=${submit}>
       <div class="brand">
         <span class="brand-logo"><${Icon} name="spot" /></span>
-        <span class="brand-text"><b>Showtechnik-Inventar</b><small>Bitte anmelden</small></span>
+        <span class="brand-text"><b>Showlager</b><small>Inventar für Showtechnik</small></span>
       </div>
       <div class="stack" style="gap:14px">
         <${Field} label="E-Mail"><input id="login-email" type="email" autocomplete="username" required ...${bind("email")} /><//>
@@ -77,7 +77,7 @@ export function Setup({ onDone }) {
     <form class="login-card setup" onSubmit=${submit}>
       <div class="brand">
         <span class="brand-logo"><${Icon} name="spot" /></span>
-        <span class="brand-text"><b>Showtechnik-Inventar einrichten</b><small>Einmalig beim ersten Start</small></span>
+        <span class="brand-text"><b>Showlager einrichten</b><small>Einmalig beim ersten Start</small></span>
       </div>
 
       <section class="section">

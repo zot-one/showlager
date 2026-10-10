@@ -1,4 +1,4 @@
-# Showtechnik-Inventar
+# Showlager
 
 Inventar für die Showtechnik eines Theater- oder Kulturvereins: Licht, Ton, Kabel und alles andere, verteilt auf
 die Keller und Garagen der Mitglieder.
@@ -48,7 +48,7 @@ Die Migration legt beim ersten Start alle Collections an. Daten liegen in `pb_da
 Solange es noch kein Konto gibt, schreibt der Server einen **Einrichtungscode** ins Log:
 
 ```
-  Showtechnik-Inventar ist noch nicht eingerichtet.
+  Showlager ist noch nicht eingerichtet.
   Einrichtungscode: K7QM-4XPA
 ```
 

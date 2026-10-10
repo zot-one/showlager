@@ -9,7 +9,7 @@ migrate((app) => {
   app.save(settings)
 
   const s = app.settings()
-  s.meta.appName = "Showtechnik-Inventar"
+  s.meta.appName = "Showlager"
   app.save(s)
 }, (app) => {
   const settings = app.findCollectionByNameOrId("settings")

@@ -1,8 +1,8 @@
 services:
   pocketbase:
     build: .
-    image: showtechnik-inventar:0.40.5
-    container_name: showtechnik-inventar
+    image: showlager:0.40.5
+    container_name: showlager
     restart: unless-stopped
     ports:
       - "127.0.0.1:8088:8090"

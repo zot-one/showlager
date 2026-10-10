@@ -125,7 +125,7 @@ migrate((app) => {
   app.save(new Record(settings, {}))
 
   const s = app.settings()
-  s.meta.appName = "Showtechnik-Inventar"
+  s.meta.appName = "Showlager"
   s.backups.cron = "30 3 * * *"
   s.backups.cronMaxKeep = 14
   s.trustedProxy.headers = ["X-Forwarded-For"]

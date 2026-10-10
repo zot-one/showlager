@@ -51,7 +51,7 @@ export function Brand() {
   const o = org()
   return html`<a class="brand" href="#/">
     <span class="brand-logo">${o.short || html`<${Icon} name="spot" />`}</span>
-    <span class="brand-text"><b>Inventar</b><small>${o.name || "Showtechnik"}</small></span>
+    <span class="brand-text"><b>Showlager</b><small>${o.name || "Inventar für Showtechnik"}</small></span>
   </a>`
 }
 
@@ -61,7 +61,7 @@ function Shell() {
   const [View, section, props] = resolve(route)
   const user = me()
   const o = org()
-  useEffect(() => { document.title = o.short ? `${o.short} Inventar` : "Showtechnik-Inventar" }, [o.short])
+  useEffect(() => { document.title = o.short ? `Showlager · ${o.short}` : "Showlager" }, [o.short])
   const counts = { items: s.items.length, locations: s.locations.length, types: s.types.length }
   const cur = (k) => (k === section ? "page" : undefined)
 
