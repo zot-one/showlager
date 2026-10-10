@@ -367,7 +367,7 @@ function fromItem(i) {
   }
 }
 
-function InlineCreate({ fields, onCreate, onCancel }) {
+function InlineCreate({ fields, onCreate, onCancel, before }) {
   const [v, , bind] = useForm({})
   const [busy, setBusy] = useState(false)
   const submit = async () => {
@@ -375,6 +375,7 @@ function InlineCreate({ fields, onCreate, onCancel }) {
     try { await onCreate(v) } catch (err) { toast(errMsg(err), true) } finally { setBusy(false) }
   }
   return html`<div class="mode-ed">
+    ${before}
     <div class="grid2">${fields.map(([k, label]) => html`<${Field} label=${label}><input id=${`ic-${k}`} ...${bind(k)} onKeyDown=${(e) => e.key === "Enter" && (e.preventDefault(), submit())} /><//>`)}</div>
     <div class="row"><button type="button" class="btn sm primary" disabled=${busy} onClick=${submit}>${t("Anlegen")}</button>
       <button type="button" class="btn sm ghost" onClick=${onCancel}>${t("Abbrechen")}</button></div>
@@ -391,6 +392,7 @@ export function ItemEdit({ id, copy, presetType, presetLoc }) {
   const [dropPhotos, setDropPhotos] = useState([])
   const [busy, setBusy] = useState(false)
   const [creating, setCreating] = useState(null) // "type" | "location"
+  const [readingGdtf, setReadingGdtf] = useState(false)
 
   if (id && !item) return html`<div class="wrap"><${Empty} title=${t("Teil nicht gefunden")} /></div>`
 
@@ -410,6 +412,17 @@ export function ItemEdit({ id, copy, presetType, presetLoc }) {
       name: x.name || (ty ? ty.model : ""),
       category: x.category || (m.length ? BASE_CATEGORIES[0] : ""),
     }))
+  }
+
+  // a GDTF alone is enough: the server fills manufacturer, model, modes and image
+  const typeFromGdtf = async ([file]) => {
+    setReadingGdtf(true)
+    try {
+      const ty = await save("fixture_types", null, { gdtf: file })
+      pickType(ty.id)
+      setCreating(null)
+      toast(t("Gerätetyp „{name}“ aus GDTF angelegt ({modes})", { name: typeLabel(ty), modes: tn(modesOf(ty).length, "{n} Mode", "{n} Modes") }))
+    } catch (err) { toast(errMsg(err), true) } finally { setReadingGdtf(false) }
   }
 
   const submit = async (e, next = false) => {
@@ -458,6 +471,12 @@ export function ItemEdit({ id, copy, presetType, presetLoc }) {
           <${Field} label=${`${t("Name")} *`}><input id="e-name" required ...${bind("name")} placeholder=${t("z. B. PAR Bühne links")} /><//>
         </div>
         ${creating === "type" ? html`<${InlineCreate} fields=${[["manufacturer", t("Hersteller")], ["model", t("Modell")]]}
+          before=${html`
+            <${FileDrop} accept=".gdtf" onFiles=${typeFromGdtf}>
+              <strong>${readingGdtf ? t("GDTF wird gelesen…") : t("GDTF-Datei wählen oder hierher ziehen")}</strong>
+              <span>${t("Legt den Typ mit allen Modes und Kanälen an")}</span>
+            <//>
+            <span class="label">${t("Oder ohne GDTF, nur mit Namen:")}</span>`}
           onCancel=${() => setCreating(null)}
           onCreate=${async (d) => { const ty = await save("fixture_types", null, d); pickType(ty.id); setCreating(null); toast(t("Typ angelegt. GDTF und Modes kannst du später unter Gerätetypen ergänzen.")) }} />` : null}
         <div class="grid3">

@@ -51,7 +51,11 @@ const SERVER_DE = {
   "The authenticated record is not allowed to perform this action.": "Dafür fehlen dir die Rechte.",
   "Something went wrong while processing your request.": "Beim Verarbeiten ist etwas schiefgelaufen.",
 }
-export const serverMsg = (msg) => (lang === "de" && SERVER_DE[msg]) || msg
+export function serverMsg(msg) {
+  if (lang !== "de") return msg
+  const m = /^GDTF: (.*)$/.exec(msg || "")
+  return m ? `GDTF: ${SERVER_DE[m[1]] || m[1]}` : SERVER_DE[msg] || msg
+}
 
 // GDTF channel names are stored in English with the attribute; German UI shows German names
 const ATTR_DE = {
@@ -187,6 +191,9 @@ const EN = {
   "Adresse (optional)": "Address (optional)", "belegt {a}–{b}": "uses {a}–{b}", "Fotos hinzufügen": "Add photos",
   "Antippen für Kamera oder Galerie, oder Dateien hierher ziehen": "Tap for camera or gallery, or drop files here",
   "Macken, Zubehör, Besonderheiten …": "Quirks, accessories, special notes …",
+  "Gerätetyp „{name}“ aus GDTF angelegt ({modes})": "Fixture type “{name}” created from GDTF ({modes})",
+  "Legt den Typ mit allen Modes und Kanälen an": "Creates the type with all modes and channels",
+  "Oder ohne GDTF, nur mit Namen:": "Or without GDTF, just by name:",
   "Speichern und gleich das nächste gleiche Teil anlegen": "Save and start the next identical item right away", "Speichern + nächstes": "Save + next",
 
   // ---------- labels
